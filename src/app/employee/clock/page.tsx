@@ -1,5 +1,5 @@
 "use client";
-
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
 import { supabase } from "../../../supabaseClient";
@@ -32,7 +32,10 @@ clock_in: string | null;
 clock_out: string | null;
 };
 
+
+
 export default function ClockPage() {
+const router = useRouter();
 const [status, setStatus] = useState<string>("Not clocked in");
 const [location, setLocation] = useState<string>("");
 const [distanceAway, setDistanceAway] = useState<string | null>(null);
@@ -87,7 +90,7 @@ error: userError,
 } = await supabase.auth.getUser();
 
 if (userError || !user) {
-alert("Please log in first.");
+router.push("/login");
 setAuthReady(true);
 return;
 }
