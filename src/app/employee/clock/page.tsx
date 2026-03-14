@@ -14,7 +14,7 @@ latitude: 48.03957,
 longitude: -122.14665,
 };
 
-const ALLOWED_RADIUS_METERS = 200;
+const ALLOWED_RADIUS_METERS = 5000;
 
 type EmployeeRow = {
 id: string;
