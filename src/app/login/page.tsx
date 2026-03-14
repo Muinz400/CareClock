@@ -12,50 +12,50 @@ const [password, setPassword] = useState("");
 const [loading, setLoading] = useState(false);
 
 const handleLogin = async (e: React.FormEvent) => {
-e.preventDefault();
-setLoading(true);
-
-const { error } = await supabase.auth.signInWithPassword({
-email,
-password,
-});
-
-if (error) {
-alert(error.message);
-setLoading(false);
-return;
-}
-
-const {
-data: { user },
-error: userError,
-} = await supabase.auth.getUser();
-
-if (userError || !user) {
-alert("Login succeeded but user could not be loaded.");
-setLoading(false);
-return;
-}
-
-const { data: profile, error: profileError } = await supabase
-.from("profiles")
-.select("role")
-.eq("id", user.id)
-.single();
-
-if (profileError || !profile) {
-alert("Profile not found.");
-setLoading(false);
-return;
-}
-
-if (profile.role === "admin") {
-router.push("/admin");
-} else {
-router.push("/employee/clock");
-}
-};
-
+    e.preventDefault();
+    setLoading(true);
+    
+    const { error } = await supabase.auth.signInWithPassword({
+    email,
+    password,
+    });
+    
+    if (error) {
+    alert(error.message);
+    setLoading(false);
+    return;
+    }
+    
+    const {
+    data: { user },
+    error: userError,
+    } = await supabase.auth.getUser();
+    
+    if (userError || !user) {
+    alert("Login succeeded but user could not be loaded.");
+    setLoading(false);
+    return;
+    }
+    
+    const { data: profile, error: profileError } = await supabase
+    .from("profiles")
+    .select("role")
+    .eq("id", user.id)
+    .single();
+    
+    if (profileError || !profile) {
+    alert("Profile not found.");
+    setLoading(false);
+    return;
+    }
+    
+    if (profile.role === "admin") {
+    router.push("/admin");
+    } else {
+    router.push("/employee/clock");
+    }
+    };
+    
 return (
 <main
 style={{
