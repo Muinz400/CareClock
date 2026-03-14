@@ -144,31 +144,32 @@ return (
 <p style={{ marginTop: 0, opacity: 0.75 }}>
 Live employee clock activity and latest timesheet status.
 </p>
-<div style={{ display: "flex", gap: 16, marginBottom: 24 }}>
-<a href="/employees">
-<button>Employees</button>
+<div style={{ display: "flex", gap: 12, marginBottom: 24, flexWrap: "wrap" }}>
+{[
+["Employees", "/employees"],
+["Timesheets", "/timesheets"],
+["Payroll", "/payroll"],
+["Scheduling", "/scheduling"],
+["Clients", "/clients"],
+["Houses", "/houses"],
+].map(([label, href]) => (
+<a key={href} href={href}>
+<button
+style={{
+padding: "8px 14px",
+borderRadius: 6,
+border: "1px solid #ddd",
+background: "#f9f9f9",
+cursor: "pointer",
+fontWeight: 500,
+}}
+>
+{label}
+</button>
 </a>
-
-<a href="/timesheets">
-<button>Timesheets</button>
-</a>
-
-<a href="/payroll">
-<button>Payroll</button>
-</a>
-
-<a href="/scheduling">
-<button>Scheduling</button>
-</a>
-
-<a href="/clients">
-<button>Clients</button>
-</a>
-
-<a href="/houses">
-<button>Houses</button>
-</a>
+))}
 </div>
+
 
 <div style={{ margin: "20px 0" }}>
 <button
