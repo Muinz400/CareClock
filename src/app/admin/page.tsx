@@ -41,6 +41,12 @@ export default function AdminPage() {
 const [rows, setRows] = useState<EmployeeDashboardRow[]>([]);
 const [loading, setLoading] = useState(true);
 const [error, setError] = useState("");
+const [newEmployeeName, setNewEmployeeName] = useState("");
+const [newEmployeeEmail, setNewEmployeeEmail] = useState("");
+const [newEmployeeRate, setNewEmployeeRate] = useState("");
+const [adminOrgId, setAdminOrgId] = useState<string | null>(null);
+
+
 
 const router = useRouter();
 
@@ -58,14 +64,17 @@ return;
 
 const { data: profile, error: profileError } = await supabase
 .from("profiles")
-.select("role")
+.select("role, org_id")
 .eq("id", user.id)
 .single();
+
 
 if (profileError || !profile) {
 router.push("/login");
 return;
 }
+
+setAdminOrgId(profile.org_id);
 
 if (profile.role !== "admin") {
 router.push("/employee/clock");
@@ -137,6 +146,51 @@ setLoading(false);
 useEffect(() => {
 loadDashboard();
 }, []);
+
+
+async function handleAddEmployee(e: React.FormEvent) {
+    e.preventDefault();
+    
+    if (!adminOrgId) {
+    alert("Admin org not loaded yet.");
+    return;
+    }
+    
+    if (!newEmployeeName || !newEmployeeEmail || !newEmployeeRate) {
+    alert("Please fill out all employee fields.");
+    return;
+    }
+    
+    const hourlyRateNumber = Number(newEmployeeRate);
+    
+    if (Number.isNaN(hourlyRateNumber)) {
+    alert("Hourly rate must be a number.");
+    return;
+    }
+    
+    const { error } = await supabase.from("employees").insert([
+    {
+    org_id: adminOrgId,
+    name: newEmployeeName,
+    email: newEmployeeEmail,
+    hourly_rate: hourlyRateNumber,
+    user_id: null,
+    },
+    ]);
+    
+    if (error) {
+    alert(error.message);
+    return;
+    }
+    
+    setNewEmployeeName("");
+    setNewEmployeeEmail("");
+    setNewEmployeeRate("");
+    alert("Employee added successfully.");
+    
+    loadDashboard();
+    }
+
 
 return (
 <main style={{ maxWidth: 1100, margin: "40px auto", padding: 20 }}>
@@ -248,7 +302,77 @@ Houses
 </a>
 </div>
 
+<div
+style={{
+marginBottom: 24,
+padding: 16,
+border: "1px solid #e5e7eb",
+borderRadius: 12,
+background: "white",
+}}
+>
+<h3 style={{ marginTop: 0 }}>Add Employee</h3>
 
+<form
+onSubmit={handleAddEmployee}
+style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center" }}
+>
+<input
+type="text"
+placeholder="Employee name"
+value={newEmployeeName}
+onChange={(e) => setNewEmployeeName(e.target.value)}
+style={{
+padding: "10px 12px",
+border: "1px solid #d1d5db",
+borderRadius: 8,
+minWidth: 180,
+}}
+/>
+
+<input
+type="email"
+placeholder="Employee email"
+value={newEmployeeEmail}
+onChange={(e) => setNewEmployeeEmail(e.target.value)}
+style={{
+padding: "10px 12px",
+border: "1px solid #d1d5db",
+borderRadius: 8,
+minWidth: 220,
+}}
+/>
+
+<input
+type="number"
+step="0.01"
+placeholder="Hourly rate"
+value={newEmployeeRate}
+onChange={(e) => setNewEmployeeRate(e.target.value)}
+style={{
+padding: "10px 12px",
+border: "1px solid #d1d5db",
+borderRadius: 8,
+minWidth: 140,
+}}
+/>
+
+<button
+type="submit"
+style={{
+padding: "12px 20px",
+background: "#111",
+color: "white",
+border: "none",
+borderRadius: 8,
+fontWeight: 600,
+cursor: "pointer",
+}}
+>
+Add Employee
+</button>
+</form>
+</div>
 
 <div style={{ margin: "20px 0" }}>
 <button
@@ -262,6 +386,9 @@ borderRadius: 8,
 cursor: "pointer",
 fontWeight: 600,
 }}
+
+
+
 >
 Refresh Dashboard
 </button>
