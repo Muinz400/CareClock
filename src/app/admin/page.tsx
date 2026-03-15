@@ -144,8 +144,29 @@ setLoading(false);
 }
 
 useEffect(() => {
-loadDashboard();
-}, []);
+    loadDashboard();
+    
+    const channel = supabase
+    .channel("admin-live-clock")
+    .on(
+    "postgres_changes",
+    {
+    event: "*",
+    schema: "public",
+    table: "clock_logs",
+    },
+    () => {
+    console.log("Clock log changed — refreshing dashboard");
+    loadDashboard();
+    }
+    )
+    .subscribe();
+    
+    return () => {
+    supabase.removeChannel(channel);
+    };
+    }, []);
+    
 
 
 async function handleAddEmployee(e: React.FormEvent) {
