@@ -1,4 +1,5 @@
 "use client";
+
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
@@ -23,19 +24,9 @@ name: string;
 email: string;
 };
 
-type ClockLogRow = {
-id: string;
-employee_id: string;
-latitude: number | null;
-longitude: number | null;
-clock_in: string | null;
-clock_out: string | null;
-};
-
-
-
 export default function ClockPage() {
 const router = useRouter();
+
 const [status, setStatus] = useState<string>("Not clocked in");
 const [location, setLocation] = useState<string>("");
 const [distanceAway, setDistanceAway] = useState<string | null>(null);
@@ -104,12 +95,12 @@ const { data: employeeRow, error: employeeError } = await supabase
 if (employeeError || !employeeRow) {
 console.error(employeeError);
 alert("Employee record not found.");
+router.push("/login");
 setAuthReady(true);
 return;
 }
 
 setEmployee(employeeRow);
-setAuthReady(true);
 
 const { data, error } = await supabase
 .from("clock_logs")
@@ -126,6 +117,8 @@ setStatus(data.clock_in && !data.clock_out ? "Clocked In" : "Clocked Out");
 } else {
 setStatus("Not clocked in");
 }
+
+setAuthReady(true);
 }
 
 function updateLocationState(lat: number, lng: number) {
@@ -389,7 +382,7 @@ fontWeight: 600,
 <button
 style={clockInBtn}
 onClick={handleClockIn}
-disabled={loading || !isWithinRadius || status === "Clocked In"}
+disabled={!authReady || loading || !isWithinRadius || status === "Clocked In"}
 >
 {loading ? "Working..." : "Clock In"}
 </button>
@@ -397,7 +390,7 @@ disabled={loading || !isWithinRadius || status === "Clocked In"}
 <button
 style={clockOutBtn}
 onClick={handleClockOut}
-disabled={loading || status !== "Clocked In"}
+disabled={!authReady || loading || status !== "Clocked In"}
 >
 {loading ? "Working..." : "Clock Out"}
 </button>
