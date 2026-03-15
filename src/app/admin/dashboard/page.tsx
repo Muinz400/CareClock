@@ -24,6 +24,7 @@ type EmployeeDashboardRow = {
 employee: Employee;
 latestLog: ClockLog | null;
 status: "Clocked In" | "Clocked Out" | "No Activity";
+houseName: string | null;
 };
 
 function formatDateTime(value: string | null) {
@@ -141,6 +142,7 @@ results.push({
 employee,
 latestLog: (latestLog as ClockLog | null) ?? null,
 status,
+houseName: "Main House",
 });
 }
 
@@ -295,13 +297,7 @@ Auto-refreshing every 3 seconds
 <button style={navBtnStyle}>Scheduling</button>
 </a>
 
-<a href="/clients">
-<button style={navBtnStyle}>Clients</button>
-</a>
 
-<a href="/houses">
-<button style={navBtnStyle}>Houses</button>
-</a>
 </div>
 
 <div
@@ -404,6 +400,7 @@ minWidth: 900,
 <tr>
 <th style={thStyle}>Employee</th>
 <th style={thStyle}>Email</th>
+<th style={thStyle}>House</th>
 <th style={thStyle}>Status</th>
 <th style={thStyle}>Last Clock In</th>
 <th style={thStyle}>Last Clock Out</th>
@@ -418,7 +415,7 @@ minWidth: 900,
 <tr key={row.employee.id}>
 <td style={tdStyle}>{row.employee.name}</td>
 <td style={tdStyle}>{row.employee.email}</td>
-
+<td style={tdStyle}>{row.houseName || "-"}</td>
 <td style={tdStyle}>
 <span
 style={{
