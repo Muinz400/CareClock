@@ -1,11 +1,16 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { supabase } from "../../supabaseClient";
 import ShiftCard from "../../components/ShiftCard";
 import WeeklySchedule from "../../components/WeeklySchedule";
 
-const ORG_ID = process.env.NEXT_PUBLIC_ORG_ID;
+type ProfileRow = {
+id: string;
+org_id: string;
+role: string;
+};
 
 type Employee = {
 id: string;
@@ -15,6 +20,7 @@ name: string;
 type Schedule = {
 id: string;
 employee_id: string;
+org_id?: string;
 work_date: string;
 start_time: string | null;
 end_time: string | null;
@@ -24,23 +30,75 @@ daily_log: string | null;
 };
 
 export default function SchedulingPage() {
+const router = useRouter();
+
+const [authReady, setAuthReady] = useState(false);
+const [orgId, setOrgId] = useState<string | null>(null);
+
 const [employees, setEmployees] = useState<Employee[]>([]);
 const [schedules, setSchedules] = useState<Schedule[]>([]);
+
 const [employeeId, setEmployeeId] = useState("");
 const [workDate, setWorkDate] = useState("");
 const [startTime, setStartTime] = useState("");
 const [endTime, setEndTime] = useState("");
-const [mileage, setMileage] = useState("0");
+const [mileage, setMileage] = useState("");
 const [isOuting, setIsOuting] = useState(false);
 const [dailyLog, setDailyLog] = useState("");
+
 const [editingId, setEditingId] = useState<string | null>(null);
+const [loading, setLoading] = useState(true);
+const [saving, setSaving] = useState(false);
 const [error, setError] = useState<string | null>(null);
 
-async function loadEmployees() {
+async function checkAdminAndLoadData() {
+setLoading(true);
+setError(null);
+
+const {
+data: { user },
+error: userError,
+} = await supabase.auth.getUser();
+
+if (userError || !user) {
+router.push("/login");
+return;
+}
+
+const { data: profile, error: profileError } = await supabase
+.from("profiles")
+.select("id, org_id, role")
+.eq("id", user.id)
+.single();
+
+if (profileError || !profile) {
+router.push("/login");
+return;
+}
+
+const adminProfile = profile as ProfileRow;
+
+if (adminProfile.role !== "admin") {
+router.push("/employee/clock");
+return;
+}
+
+setOrgId(adminProfile.org_id);
+setAuthReady(true);
+
+await Promise.all([
+loadEmployees(adminProfile.org_id),
+loadSchedules(adminProfile.org_id),
+]);
+
+setLoading(false);
+}
+
+async function loadEmployees(activeOrgId: string) {
 const { data, error } = await supabase
 .from("employees")
 .select("id, name")
-.eq("org_id", ORG_ID)
+.eq("org_id", activeOrgId)
 .order("name", { ascending: true });
 
 if (error) {
@@ -56,11 +114,11 @@ setEmployeeId(rows[0].id);
 }
 }
 
-async function loadSchedules() {
+async function loadSchedules(activeOrgId: string) {
 const { data, error } = await supabase
 .from("schedules")
 .select("*")
-.eq("org_id", ORG_ID)
+.eq("org_id", activeOrgId)
 .order("work_date", { ascending: false });
 
 if (error) {
@@ -77,9 +135,10 @@ setEmployeeId(s.employee_id);
 setWorkDate(s.work_date);
 setStartTime(s.start_time || "");
 setEndTime(s.end_time || "");
-setMileage(String(s.mileage ?? 0));
+setMileage(s.mileage != null ? String(s.mileage) : "");
 setIsOuting(Boolean(s.is_outing));
 setDailyLog(s.daily_log || "");
+window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
 function resetForm() {
@@ -87,7 +146,7 @@ setEditingId(null);
 setWorkDate("");
 setStartTime("");
 setEndTime("");
-setMileage("0");
+setMileage("");
 setIsOuting(false);
 setDailyLog("");
 }
@@ -96,28 +155,39 @@ async function saveSchedule(e: React.FormEvent) {
 e.preventDefault();
 setError(null);
 
-if (!ORG_ID) {
-setError("Missing NEXT_PUBLIC_ORG_ID in .env.local");
+if (!orgId) {
+setError("Admin organization not loaded.");
 return;
 }
 
 if (!employeeId) {
-setError("Select an employee");
+setError("Please select an employee.");
 return;
 }
 
 if (!workDate) {
-setError("Select a work date");
+setError("Please select a work date.");
+return;
+}
+
+setSaving(true);
+
+const parsedMileage =
+mileage.trim() === "" ? null : Number(mileage);
+
+if (parsedMileage !== null && Number.isNaN(parsedMileage)) {
+setError("Mileage must be a valid number.");
+setSaving(false);
 return;
 }
 
 const payload = {
-org_id: ORG_ID,
+org_id: orgId,
 employee_id: employeeId,
 work_date: workDate,
 start_time: startTime || null,
 end_time: endTime || null,
-mileage: Number(mileage || 0),
+mileage: parsedMileage,
 is_outing: isOuting,
 daily_log: dailyLog.trim() || null,
 };
@@ -130,6 +200,7 @@ const { error } = await supabase
 
 if (error) {
 setError(error.message);
+setSaving(false);
 return;
 }
 } else {
@@ -137,15 +208,22 @@ const { error } = await supabase.from("schedules").insert([payload]);
 
 if (error) {
 setError(error.message);
+setSaving(false);
 return;
 }
 }
 
 resetForm();
-await loadSchedules();
+await loadSchedules(orgId);
+setSaving(false);
 }
 
 async function deleteShift(id: string) {
+setError(null);
+
+const confirmed = window.confirm("Delete this shift?");
+if (!confirmed) return;
+
 const { error } = await supabase.from("schedules").delete().eq("id", id);
 
 if (error) {
@@ -153,47 +231,92 @@ setError(error.message);
 return;
 }
 
-await loadSchedules();
+if (orgId) {
+await loadSchedules(orgId);
+}
+}
+
+async function handleSignOut() {
+await supabase.auth.signOut();
+router.push("/login");
 }
 
 useEffect(() => {
-loadEmployees();
-loadSchedules();
+void checkAdminAndLoadData();
 }, []);
 
+const selectedEmployeeName =
+employees.find((emp) => emp.id === employeeId)?.name ?? "None selected";
+
+const upcomingCount = useMemo(() => schedules.length, [schedules]);
+
+if (!authReady && loading) {
 return (
-<main style={{ padding: 20, maxWidth: 1100 }}>
-<h1 style={{ marginBottom: 16 }}>Scheduling</h1>
+<main style={pageStyle}>
+<p>Loading scheduling...</p>
+</main>
+);
+}
 
-{error && <p style={{ color: "crimson", marginBottom: 16 }}>Error: {error}</p>}
+return (
+<main style={pageStyle}>
+<div style={headerRow}>
+<div>
+<h1 style={{ margin: 0, fontSize: 36 }}>Scheduling</h1>
+<p style={subText}>
+Create, edit, and review employee shifts in one place.
+</p>
+</div>
 
-<div
-style={{
-display: "grid",
-gridTemplateColumns: "minmax(320px, 420px) 1fr",
-gap: 20,
-alignItems: "start",
-}}
->
-<section
-style={{
-background: "white",
-border: "1px solid #e5e7eb",
-borderRadius: 12,
-padding: 16,
-}}
->
-<h2 style={{ marginTop: 0, marginBottom: 12 }}>
-{editingId ? "Edit Shift" : "Create Shift"}
-</h2>
+<button onClick={handleSignOut} style={signOutBtn}>
+Sign Out
+</button>
+</div>
 
-<form
-onSubmit={saveSchedule}
-style={{
-display: "grid",
-gap: 10,
-}}
->
+{error && (
+<div style={errorCard}>
+<strong style={{ display: "block", marginBottom: 4 }}>Something went wrong</strong>
+<span>{error}</span>
+</div>
+)}
+
+<div style={statsRow}>
+<div style={statCard}>
+<div style={statLabel}>Employees</div>
+<div style={statValue}>{employees.length}</div>
+</div>
+
+<div style={statCard}>
+<div style={statLabel}>Scheduled Shifts</div>
+<div style={statValue}>{upcomingCount}</div>
+</div>
+
+<div style={statCard}>
+<div style={statLabel}>Selected Employee</div>
+<div style={statValueSmall}>{selectedEmployeeName}</div>
+</div>
+</div>
+
+<div style={gridWrap}>
+<section style={panelStyle}>
+<div style={panelHeader}>
+<div>
+<h2 style={panelTitle}>{editingId ? "Edit Shift" : "Create Shift"}</h2>
+<p style={panelSub}>
+Build a cleaner weekly plan for your team.
+</p>
+</div>
+
+{editingId && (
+<span style={editingBadge}>
+Editing
+</span>
+)}
+</div>
+
+<form onSubmit={saveSchedule} style={formGrid}>
+<div>
+<label style={labelStyle}>Employee</label>
 <select
 value={employeeId}
 onChange={(e) => setEmployeeId(e.target.value)}
@@ -206,56 +329,78 @@ style={inputStyle}
 </option>
 ))}
 </select>
+</div>
 
+<div>
+<label style={labelStyle}>Work Date</label>
 <input
 type="date"
 value={workDate}
 onChange={(e) => setWorkDate(e.target.value)}
 style={inputStyle}
 />
+</div>
 
+<div style={twoCol}>
+<div>
+<label style={labelStyle}>Start Time</label>
 <input
 type="time"
 value={startTime}
 onChange={(e) => setStartTime(e.target.value)}
 style={inputStyle}
 />
+</div>
 
+<div>
+<label style={labelStyle}>End Time</label>
 <input
 type="time"
 value={endTime}
 onChange={(e) => setEndTime(e.target.value)}
 style={inputStyle}
 />
+</div>
+</div>
 
+<div>
+<label style={labelStyle}>Mileage</label>
 <input
 type="number"
-placeholder="Mileage"
+placeholder="Leave blank if none"
 value={mileage}
 onChange={(e) => setMileage(e.target.value)}
 style={inputStyle}
 />
+</div>
 
-<label style={{ display: "flex", alignItems: "center", gap: 8 }}>
+<label style={checkboxRow}>
 <input
 type="checkbox"
 checked={isOuting}
 onChange={(e) => setIsOuting(e.target.checked)}
 />
-Outing
+<span>Mark as outing</span>
 </label>
 
+<div>
+<label style={labelStyle}>Daily Log</label>
 <textarea
-placeholder="Daily Log"
+placeholder="Add context for the shift, tasks, notes, or reminders"
 value={dailyLog}
 onChange={(e) => setDailyLog(e.target.value)}
-rows={4}
-style={inputStyle}
+rows={5}
+style={textareaStyle}
 />
+</div>
 
 <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-<button type="submit" className="primary-btn">
-{editingId ? "Save Changes" : "Create Shift"}
+<button type="submit" style={primaryBtn}>
+{saving
+? "Saving..."
+: editingId
+? "Save Changes"
+: "Create Shift"}
 </button>
 
 {editingId && (
@@ -267,19 +412,22 @@ Cancel Edit
 </form>
 </section>
 
-<section
-style={{
-background: "white",
-border: "1px solid #e5e7eb",
-borderRadius: 12,
-padding: 16,
-minHeight: 300,
-}}
->
-<h2 style={{ marginTop: 0, marginBottom: 12 }}>Scheduled Shifts</h2>
+<section style={panelStyle}>
+<div style={panelHeader}>
+<div>
+<h2 style={panelTitle}>Scheduled Shifts</h2>
+<p style={panelSub}>Review and manage upcoming assignments.</p>
+</div>
+</div>
 
 {schedules.length === 0 ? (
-<p style={{ opacity: 0.75 }}>No scheduled shifts yet.</p>
+<div style={emptyState}>
+<div style={{ fontSize: 30 }}>📅</div>
+<p style={{ margin: 0, fontWeight: 600 }}>No scheduled shifts yet</p>
+<p style={{ margin: 0, opacity: 0.7 }}>
+Create your first shift to start building the schedule.
+</p>
+</div>
 ) : (
 <div style={{ display: "grid", gap: 12 }}>
 {schedules.map((s) => {
@@ -300,24 +448,203 @@ onDelete={() => deleteShift(s.id)}
 </section>
 </div>
 
+<div style={{ marginTop: 24 }}>
 <WeeklySchedule schedules={schedules} employees={employees} />
+</div>
 </main>
 );
 }
 
+const pageStyle: React.CSSProperties = {
+maxWidth: 1200,
+margin: "40px auto",
+padding: 20,
+};
+
+const headerRow: React.CSSProperties = {
+display: "flex",
+justifyContent: "space-between",
+alignItems: "flex-start",
+gap: 16,
+flexWrap: "wrap",
+marginBottom: 24,
+};
+
+const subText: React.CSSProperties = {
+marginTop: 8,
+opacity: 0.72,
+fontSize: 15,
+};
+
+const signOutBtn: React.CSSProperties = {
+padding: "10px 16px",
+background: "#111827",
+color: "white",
+border: "none",
+borderRadius: 10,
+fontWeight: 600,
+cursor: "pointer",
+};
+
+const statsRow: React.CSSProperties = {
+display: "grid",
+gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
+gap: 14,
+marginBottom: 24,
+};
+
+const statCard: React.CSSProperties = {
+background: "linear-gradient(180deg, #ffffff 0%, #f8fafc 100%)",
+border: "1px solid #e5e7eb",
+borderRadius: 16,
+padding: 18,
+boxShadow: "0 6px 18px rgba(15, 23, 42, 0.05)",
+};
+
+const statLabel: React.CSSProperties = {
+fontSize: 12,
+opacity: 0.68,
+marginBottom: 8,
+textTransform: "uppercase",
+letterSpacing: 0.6,
+};
+
+const statValue: React.CSSProperties = {
+fontSize: 30,
+fontWeight: 700,
+};
+
+const statValueSmall: React.CSSProperties = {
+fontSize: 18,
+fontWeight: 700,
+};
+
+const gridWrap: React.CSSProperties = {
+display: "grid",
+gridTemplateColumns: "minmax(340px, 460px) 1fr",
+gap: 20,
+alignItems: "start",
+};
+
+const panelStyle: React.CSSProperties = {
+background: "white",
+border: "1px solid #e5e7eb",
+borderRadius: 20,
+padding: 20,
+boxShadow: "0 10px 28px rgba(15, 23, 42, 0.06)",
+};
+
+const panelHeader: React.CSSProperties = {
+display: "flex",
+justifyContent: "space-between",
+alignItems: "flex-start",
+gap: 12,
+marginBottom: 16,
+};
+
+const panelTitle: React.CSSProperties = {
+margin: 0,
+fontSize: 26,
+};
+
+const panelSub: React.CSSProperties = {
+marginTop: 6,
+marginBottom: 0,
+opacity: 0.68,
+fontSize: 14,
+};
+
+const editingBadge: React.CSSProperties = {
+background: "#dbeafe",
+color: "#1d4ed8",
+padding: "6px 10px",
+borderRadius: 999,
+fontSize: 12,
+fontWeight: 700,
+};
+
+const formGrid: React.CSSProperties = {
+display: "grid",
+gap: 14,
+};
+
+const twoCol: React.CSSProperties = {
+display: "grid",
+gridTemplateColumns: "1fr 1fr",
+gap: 12,
+};
+
+const labelStyle: React.CSSProperties = {
+display: "block",
+marginBottom: 8,
+fontSize: 13,
+fontWeight: 600,
+};
+
 const inputStyle: React.CSSProperties = {
 width: "100%",
-padding: "10px 12px",
+padding: "12px 14px",
 border: "1px solid #d1d5db",
-borderRadius: 8,
-background: "white",
+borderRadius: 12,
+background: "#fff",
+fontSize: 14,
+};
+
+const textareaStyle: React.CSSProperties = {
+width: "100%",
+padding: "12px 14px",
+border: "1px solid #d1d5db",
+borderRadius: 12,
+background: "#fff",
+fontSize: 14,
+resize: "vertical",
+};
+
+const checkboxRow: React.CSSProperties = {
+display: "flex",
+alignItems: "center",
+gap: 10,
+fontSize: 14,
+fontWeight: 500,
+};
+
+const primaryBtn: React.CSSProperties = {
+background: "#2563eb",
+color: "white",
+border: "none",
+padding: "10px 16px",
+borderRadius: 10,
+cursor: "pointer",
+fontWeight: 700,
 };
 
 const secondaryBtnStyle: React.CSSProperties = {
 background: "#e5e7eb",
 color: "#111827",
 border: "none",
-padding: "8px 12px",
-borderRadius: 8,
+padding: "10px 16px",
+borderRadius: 10,
 cursor: "pointer",
+fontWeight: 600,
+};
+
+const errorCard: React.CSSProperties = {
+marginBottom: 18,
+background: "#fef2f2",
+border: "1px solid #fecaca",
+color: "#991b1b",
+padding: 14,
+borderRadius: 14,
+};
+
+const emptyState: React.CSSProperties = {
+minHeight: 220,
+border: "1px dashed #cbd5e1",
+borderRadius: 16,
+display: "flex",
+flexDirection: "column",
+justifyContent: "center",
+alignItems: "center",
+gap: 8,
+background: "#f8fafc",
 };
