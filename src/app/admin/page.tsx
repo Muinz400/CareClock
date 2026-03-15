@@ -1,4 +1,5 @@
 "use client";
+
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { supabase } from "../../supabaseClient";
@@ -37,7 +38,20 @@ minute: "2-digit",
 });
 }
 
+function calculateHours(clockIn: string | null, clockOut: string | null) {
+if (!clockIn || !clockOut) return "-";
+
+const start = new Date(clockIn);
+const end = new Date(clockOut);
+
+const diff = (end.getTime() - start.getTime()) / (1000 * 60 * 60);
+
+return diff.toFixed(2);
+}
+
 export default function AdminPage() {
+const router = useRouter();
+
 const [rows, setRows] = useState<EmployeeDashboardRow[]>([]);
 const [loading, setLoading] = useState(true);
 const [error, setError] = useState("");
@@ -45,10 +59,6 @@ const [newEmployeeName, setNewEmployeeName] = useState("");
 const [newEmployeeEmail, setNewEmployeeEmail] = useState("");
 const [newEmployeeRate, setNewEmployeeRate] = useState("");
 const [adminOrgId, setAdminOrgId] = useState<string | null>(null);
-
-
-
-const router = useRouter();
 
 useEffect(() => {
 async function checkAdmin() {
@@ -68,7 +78,6 @@ const { data: profile, error: profileError } = await supabase
 .eq("id", user.id)
 .single();
 
-
 if (profileError || !profile) {
 router.push("/login");
 return;
@@ -78,15 +87,16 @@ setAdminOrgId(profile.org_id);
 
 if (profile.role !== "admin") {
 router.push("/employee/clock");
-return;
 }
 }
 
 checkAdmin();
 }, [router]);
 
-
-
+async function handleSignOut() {
+await supabase.auth.signOut();
+router.push("/login");
+}
 
 async function loadDashboard() {
 setLoading(true);
@@ -103,7 +113,6 @@ throw employeesError;
 }
 
 const employeeList = (employees ?? []) as Employee[];
-
 const results: EmployeeDashboardRow[] = [];
 
 for (const employee of employeeList) {
@@ -122,7 +131,8 @@ throw logError;
 let status: "Clocked In" | "Clocked Out" | "No Activity" = "No Activity";
 
 if (latestLog) {
-status = latestLog.clock_in && !latestLog.clock_out
+status =
+latestLog.clock_in && !latestLog.clock_out
 ? "Clocked In"
 : "Clocked Out";
 }
@@ -144,205 +154,153 @@ setLoading(false);
 }
 
 useEffect(() => {
-    let mounted = true;
-    
-    const refresh = async () => {
-    if (!mounted) return;
-    await loadDashboard();
-    };
-    
-    refresh();
-    
-    const interval = setInterval(() => {
-    refresh();
-    }, 3000);
-    
-    const channel = supabase
-    .channel("admin-clock-live")
-    .on(
-    "postgres_changes",
-    {
-    event: "*",
-    schema: "public",
-    table: "clock_logs",
-    },
-    async () => {
-    await refresh();
-    }
-    )
-    .subscribe();
-    
-    return () => {
-    mounted = false;
-    clearInterval(interval);
-    supabase.removeChannel(channel);
-    };
-    }, []);
-    
+let mounted = true;
+
+const refresh = async () => {
+if (!mounted) return;
+await loadDashboard();
+};
+
+refresh();
+
+const interval = setInterval(() => {
+refresh();
+}, 3000);
+
+const channel = supabase
+.channel("admin-clock-live")
+.on(
+"postgres_changes",
+{
+event: "*",
+schema: "public",
+table: "clock_logs",
+},
+async () => {
+await refresh();
+}
+)
+.subscribe();
+
+return () => {
+mounted = false;
+clearInterval(interval);
+supabase.removeChannel(channel);
+};
+}, []);
 
 async function handleAddEmployee(e: React.FormEvent) {
-    e.preventDefault();
-    
-    if (!adminOrgId) {
-    alert("Admin org not loaded yet.");
-    return;
-    }
-    
-    if (!newEmployeeName || !newEmployeeEmail || !newEmployeeRate) {
-    alert("Please fill out all employee fields.");
-    return;
-    }
-    
-    const hourlyRateNumber = Number(newEmployeeRate);
-    
-    if (Number.isNaN(hourlyRateNumber)) {
-    alert("Hourly rate must be a number.");
-    return;
-    }
-    
-    const response = await fetch("/api/create-employee", {
-    method: "POST",
-    headers: {
-    "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-    name: newEmployeeName,
-    email: newEmployeeEmail,
-    hourlyRate: hourlyRateNumber,
-    orgId: adminOrgId,
-    }),
-    });
-    
-    const result = await response.json();
-    
-    if (!response.ok) {
-    alert(result.error || "Failed to create employee.");
-    return;
-    }
-    
-    setNewEmployeeName("");
-    setNewEmployeeEmail("");
-    setNewEmployeeRate("");
-    
-    alert(
-    `Employee created successfully. Temporary password: ${result.temporaryPassword}`
-    );
-    
-    loadDashboard();
-    }
-    
-    
-    
-    
+e.preventDefault();
 
+if (!adminOrgId) {
+alert("Admin org not loaded yet.");
+return;
+}
+
+if (!newEmployeeName || !newEmployeeEmail || !newEmployeeRate) {
+alert("Please fill out all employee fields.");
+return;
+}
+
+const hourlyRateNumber = Number(newEmployeeRate);
+
+if (Number.isNaN(hourlyRateNumber)) {
+alert("Hourly rate must be a number.");
+return;
+}
+
+const response = await fetch("/api/create-employee", {
+method: "POST",
+headers: {
+"Content-Type": "application/json",
+},
+body: JSON.stringify({
+name: newEmployeeName,
+email: newEmployeeEmail,
+hourlyRate: hourlyRateNumber,
+orgId: adminOrgId,
+}),
+});
+
+const result = await response.json();
+
+if (!response.ok) {
+alert(result.error || "Failed to create employee.");
+return;
+}
+
+setNewEmployeeName("");
+setNewEmployeeEmail("");
+setNewEmployeeRate("");
+
+alert(
+`Employee created successfully. Temporary password: ${result.temporaryPassword}`
+);
+
+loadDashboard();
+}
 
 return (
 <main style={{ maxWidth: 1100, margin: "40px auto", padding: 20 }}>
-<h1 style={{ marginBottom: 8 }}>Admin Dashboard</h1>
+<div
+style={{
+display: "flex",
+justifyContent: "space-between",
+alignItems: "center",
+marginBottom: 8,
+gap: 12,
+flexWrap: "wrap",
+}}
+>
+<h1 style={{ margin: 0 }}>Admin Dashboard</h1>
+
+<button
+onClick={handleSignOut}
+style={{
+padding: "10px 14px",
+background: "#111",
+color: "white",
+border: "none",
+borderRadius: 8,
+fontWeight: 600,
+cursor: "pointer",
+}}
+>
+Sign Out
+</button>
+</div>
+
 <p style={{ marginTop: 0, opacity: 0.75 }}>
 Live employee clock activity and latest timesheet status.
 </p>
+
+<p style={{ opacity: 0.65, marginTop: -4, marginBottom: 20 }}>
+Auto-refreshing every 3 seconds
+</p>
+
 <div style={{ display: "flex", gap: 16, marginBottom: 24, flexWrap: "wrap" }}>
 <a href="/employees">
-<button
-style={{
-padding: "12px 20px",
-background: "#111",
-color: "white",
-border: "none",
-borderRadius: 8,
-fontWeight: 600,
-cursor: "pointer",
-fontSize: 14
-}}
->
-Employees
-</button>
+<button style={navBtnStyle}>Employees</button>
 </a>
 
 <a href="/timesheets">
-<button
-style={{
-padding: "12px 20px",
-background: "#111",
-color: "white",
-border: "none",
-borderRadius: 8,
-fontWeight: 600,
-cursor: "pointer",
-fontSize: 14
-}}
->
-Timesheets
-</button>
+<button style={navBtnStyle}>Timesheets</button>
 </a>
 
 <a href="/payroll">
-<button
-style={{
-padding: "12px 20px",
-background: "#111",
-color: "white",
-border: "none",
-borderRadius: 8,
-fontWeight: 600,
-cursor: "pointer",
-fontSize: 14
-}}
->
-Payroll
-</button>
+<button style={navBtnStyle}>Payroll</button>
 </a>
 
 <a href="/scheduling">
-<button
-style={{
-padding: "12px 20px",
-background: "#111",
-color: "white",
-border: "none",
-borderRadius: 8,
-fontWeight: 600,
-cursor: "pointer",
-fontSize: 14
-}}
->
-Scheduling
-</button>
+<button style={navBtnStyle}>Scheduling</button>
 </a>
 
 <a href="/clients">
-<button
-style={{
-padding: "12px 20px",
-background: "#111",
-color: "white",
-border: "none",
-borderRadius: 8,
-fontWeight: 600,
-cursor: "pointer",
-fontSize: 14
-}}
->
-Clients
-</button>
+<button style={navBtnStyle}>Clients</button>
 </a>
 
 <a href="/houses">
-<button
-style={{
-padding: "12px 20px",
-background: "#111",
-color: "white",
-border: "none",
-borderRadius: 8,
-fontWeight: 600,
-cursor: "pointer",
-fontSize: 14
-}}
->
-Houses
-</button>
+<button style={navBtnStyle}>Houses</button>
 </a>
 </div>
 
@@ -366,12 +324,7 @@ type="text"
 placeholder="Employee name"
 value={newEmployeeName}
 onChange={(e) => setNewEmployeeName(e.target.value)}
-style={{
-padding: "10px 12px",
-border: "1px solid #d1d5db",
-borderRadius: 8,
-minWidth: 180,
-}}
+style={inputStyle}
 />
 
 <input
@@ -379,12 +332,7 @@ type="email"
 placeholder="Employee email"
 value={newEmployeeEmail}
 onChange={(e) => setNewEmployeeEmail(e.target.value)}
-style={{
-padding: "10px 12px",
-border: "1px solid #d1d5db",
-borderRadius: 8,
-minWidth: 220,
-}}
+style={{ ...inputStyle, minWidth: 220 }}
 />
 
 <input
@@ -393,12 +341,7 @@ step="0.01"
 placeholder="Hourly rate"
 value={newEmployeeRate}
 onChange={(e) => setNewEmployeeRate(e.target.value)}
-style={{
-padding: "10px 12px",
-border: "1px solid #d1d5db",
-borderRadius: 8,
-minWidth: 140,
-}}
+style={{ ...inputStyle, minWidth: 140 }}
 />
 
 <button
@@ -430,9 +373,6 @@ borderRadius: 8,
 cursor: "pointer",
 fontWeight: 600,
 }}
-
-
-
 >
 Refresh Dashboard
 </button>
@@ -440,15 +380,9 @@ Refresh Dashboard
 
 {loading && <p>Loading dashboard...</p>}
 
-{error && (
-<p style={{ color: "crimson", marginBottom: 16 }}>
-{error}
-</p>
-)}
+{error && <p style={{ color: "crimson", marginBottom: 16 }}>{error}</p>}
 
-{!loading && !error && rows.length === 0 && (
-<p>No employees found.</p>
-)}
+{!loading && !error && rows.length === 0 && <p>No employees found.</p>}
 
 {!loading && !error && rows.length > 0 && (
 <div
@@ -473,15 +407,18 @@ minWidth: 900,
 <th style={thStyle}>Status</th>
 <th style={thStyle}>Last Clock In</th>
 <th style={thStyle}>Last Clock Out</th>
+<th style={thStyle}>Hours</th>
 <th style={thStyle}>Latitude</th>
 <th style={thStyle}>Longitude</th>
 </tr>
 </thead>
+
 <tbody>
 {rows.map((row) => (
 <tr key={row.employee.id}>
 <td style={tdStyle}>{row.employee.name}</td>
 <td style={tdStyle}>{row.employee.email}</td>
+
 <td style={tdStyle}>
 <span
 style={{
@@ -506,18 +443,24 @@ row.status === "Clocked In"
 {row.status}
 </span>
 </td>
+
 <td style={tdStyle}>
 {formatDateTime(row.latestLog?.clock_in ?? null)}
 </td>
+
 <td style={tdStyle}>
 {formatDateTime(row.latestLog?.clock_out ?? null)}
 </td>
+
 <td style={tdStyle}>
-{row.latestLog?.latitude ?? "—"}
+{calculateHours(
+row.latestLog?.clock_in ?? null,
+row.latestLog?.clock_out ?? null
+)}
 </td>
-<td style={tdStyle}>
-{row.latestLog?.longitude ?? "—"}
-</td>
+
+<td style={tdStyle}>{row.latestLog?.latitude ?? "-"}</td>
+<td style={tdStyle}>{row.latestLog?.longitude ?? "-"}</td>
 </tr>
 ))}
 </tbody>
@@ -527,6 +470,24 @@ row.status === "Clocked In"
 </main>
 );
 }
+
+const navBtnStyle: React.CSSProperties = {
+padding: "12px 20px",
+background: "#111",
+color: "white",
+border: "none",
+borderRadius: 8,
+fontWeight: 600,
+cursor: "pointer",
+fontSize: 14,
+};
+
+const inputStyle: React.CSSProperties = {
+padding: "10px 12px",
+border: "1px solid #d1d5db",
+borderRadius: 8,
+minWidth: 180,
+};
 
 const thStyle: React.CSSProperties = {
 textAlign: "left",
