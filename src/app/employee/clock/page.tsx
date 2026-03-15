@@ -360,9 +360,9 @@ marginBottom: 24,
 >
 <h1 style={{ margin: 0 }}>CareClock Employee Time</h1>
 
-<div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+<div style={{ display: "flex", alignItems: "center", gap: 12 }}>
 {employee && (
-<span style={{ fontSize: 14, opacity: 0.75 }}>
+<span style={{ fontSize: 14, opacity: 0.7 }}>
 {employee.name}
 </span>
 )}
@@ -373,14 +373,14 @@ await supabase.auth.signOut();
 router.push("/login");
 }}
 style={{
-padding: "8px 14px",
+padding: "6px 12px",
 background: "#111",
 color: "white",
 border: "none",
-borderRadius: 8,
+borderRadius: 6,
 fontWeight: 600,
 cursor: "pointer",
-fontSize: 13,
+fontSize: 12,
 }}
 >
 Sign Out
