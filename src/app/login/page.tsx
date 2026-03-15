@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "../../supabaseClient";
 
@@ -11,37 +11,70 @@ const [email, setEmail] = useState("");
 const [password, setPassword] = useState("");
 const [loading, setLoading] = useState(false);
 
-async function handleLogin(e: React.FormEvent) {
+async function handleLogin(e: FormEvent) {
 e.preventDefault();
 setLoading(true);
 
-const { error: signInError } = await supabase.auth.signInWithPassword({
+try {
+const { data: signInData, error: signInError } =
+await supabase.auth.signInWithPassword({
 email,
 password,
 });
 
-if (signInError) {
-alert(signInError.message);
+if (signInError || !signInData.user) {
+alert(signInError?.message || "Login failed.");
 setLoading(false);
 return;
 }
 
-const {
-data: { user },
-error: userError,
-} = await supabase.auth.getUser();
+const user = signInData.user;
 
-if (userError || !user) {
-alert("User not found after login.");
-setLoading(false);
-return;
-}
-
-const { data: profile, error: profileError } = await supabase
+let { data: profile, error: profileError } = await supabase
 .from("profiles")
-.select("id, role, full_name")
+.select("id, role, full_name, org_id")
 .eq("id", user.id)
 .single();
+
+if (!profile) {
+const { data: employee, error: employeeError } = await supabase
+.from("employees")
+.select("id, org_id, name, email")
+.eq("user_id", user.id)
+.single();
+
+if (employeeError || !employee) {
+alert("Profile not found.");
+setLoading(false);
+return;
+}
+
+const { error: insertProfileError } = await supabase
+.from("profiles")
+.insert([
+{
+id: user.id,
+org_id: employee.org_id,
+full_name: employee.name || "Employee",
+role: "employee",
+},
+]);
+
+if (insertProfileError) {
+alert(insertProfileError.message);
+setLoading(false);
+return;
+}
+
+const profileResult = await supabase
+.from("profiles")
+.select("id, role, full_name, org_id")
+.eq("id", user.id)
+.single();
+
+profile = profileResult.data;
+profileError = profileResult.error;
+}
 
 if (profileError || !profile) {
 alert("Profile not found.");
@@ -53,6 +86,12 @@ if (profile.role === "admin") {
 router.push("/admin");
 } else {
 router.push("/employee/clock");
+}
+} catch (error) {
+console.error(error);
+alert("Something went wrong during login.");
+} finally {
+setLoading(false);
 }
 }
 
@@ -69,18 +108,16 @@ background: "white",
 >
 <h1 style={{ marginBottom: 20 }}>Login</h1>
 
-<form
-onSubmit={handleLogin}
-style={{ display: "flex", flexDirection: "column", gap: 12 }}
->
+<form onSubmit={handleLogin}>
 <input
 type="email"
 placeholder="Email"
 value={email}
 onChange={(e) => setEmail(e.target.value)}
-required
 style={{
-padding: 12,
+width: "100%",
+padding: "12px",
+marginBottom: 12,
 border: "1px solid #d1d5db",
 borderRadius: 8,
 }}
@@ -91,9 +128,10 @@ type="password"
 placeholder="Password"
 value={password}
 onChange={(e) => setPassword(e.target.value)}
-required
 style={{
-padding: 12,
+width: "100%",
+padding: "12px",
+marginBottom: 16,
 border: "1px solid #d1d5db",
 borderRadius: 8,
 }}
@@ -103,8 +141,9 @@ borderRadius: 8,
 type="submit"
 disabled={loading}
 style={{
-padding: 12,
-background: "#166534",
+width: "100%",
+padding: "12px",
+background: "#111",
 color: "white",
 border: "none",
 borderRadius: 8,
