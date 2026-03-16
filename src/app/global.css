@@ -26,6 +26,26 @@
     }
     }
     
-    
+    @media print {
+
+        button {
+        display:none !important;
+        }
+        
+        body {
+        background:white;
+        }
+        
+        table {
+        font-size:11px;
+        }
+        
+        th {
+        background:#f1f5f9 !important;
+        }
+        
+        }
+        
+        
     
     

@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { formatAppTimeRange } from "../lib/time";
 
 type Schedule = {
@@ -20,6 +21,7 @@ name: string;
 type WeeklyScheduleProps = {
 schedules: Schedule[];
 employees: Employee[];
+onAddShift: (house: string, day: string) => void;
 };
 
 const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -48,16 +50,13 @@ day: "numeric",
 export default function WeeklySchedule({
 schedules,
 employees,
+onAddShift,
 }: WeeklyScheduleProps) {
 const houses = Array.from(
-new Set(
-schedules
-.map((s) => s.house_name?.trim())
-.filter(Boolean)
-)
+new Set(schedules.map((s) => s.house_name?.trim()).filter(Boolean))
 ) as string[];
 
-const weekStart = getWeekStartSunday();
+const [weekStart, setWeekStart] = useState(getWeekStartSunday());
 const weekEnd = new Date(weekStart);
 weekEnd.setDate(weekStart.getDate() + 6);
 
@@ -66,11 +65,29 @@ return employees.find((e) => e.id === employeeId)?.name ?? "Unknown";
 }
 
 function getCellShifts(house: string, day: string) {
-return schedules.filter(
-(s) =>
-(s.house_name ?? "").trim() === house &&
+return schedules.filter((s) => {
+if ((s.house_name ?? "").trim() !== house) return false;
+
+const shiftDate = new Date(`${s.work_date}T00:00:00`);
+const shiftWeekStart = getWeekStartSunday(shiftDate);
+
+return (
+shiftWeekStart.getTime() === weekStart.getTime() &&
 getDayLabel(s.work_date) === day
 );
+});
+}
+
+function goNextWeek() {
+const next = new Date(weekStart);
+next.setDate(next.getDate() + 7);
+setWeekStart(next);
+}
+
+function goPrevWeek() {
+const prev = new Date(weekStart);
+prev.setDate(prev.getDate() - 7);
+setWeekStart(prev);
 }
 
 function handleExportPdf() {
@@ -80,6 +97,10 @@ window.print();
 return (
 <section style={sectionStyle} className="weekly-schedule-print">
 <div style={headerRow}>
+<button onClick={goPrevWeek} style={navBtn}>
+◀ Previous
+</button>
+
 <div>
 <h2 style={titleStyle}>Weekly Schedule</h2>
 <p style={subTextStyle}>
@@ -87,15 +108,18 @@ return (
 </p>
 </div>
 
+<div style={{ display: "flex", gap: 8 }}>
+<button onClick={goNextWeek} style={navBtn}>
+Next ▶
+</button>
 <button onClick={handleExportPdf} style={exportBtn}>
 Export PDF
 </button>
 </div>
+</div>
 
 {houses.length === 0 ? (
-<div style={emptyState}>
-No scheduled houses yet.
-</div>
+<div style={emptyState}>No scheduled houses yet.</div>
 ) : (
 <div style={boardWrap}>
 <table style={tableStyle}>
@@ -119,9 +143,14 @@ No scheduled houses yet.
 const cellShifts = getCellShifts(house, day);
 
 return (
-<td key={`${house}-${day}`} style={cellStyle}>
+<td key={day} style={cellStyle}>
 {cellShifts.length === 0 ? (
-<span style={offTextStyle}>—</span>
+<button
+style={addBtn}
+onClick={() => onAddShift(house, day)}
+>
++ Add
+</button>
 ) : (
 <div style={shiftStackStyle}>
 {cellShifts.map((shift) => (
@@ -194,6 +223,15 @@ cursor: "pointer",
 fontWeight: 700,
 };
 
+const navBtn: React.CSSProperties = {
+background: "#e5e7eb",
+border: "none",
+padding: "8px 14px",
+borderRadius: 8,
+cursor: "pointer",
+fontWeight: 600,
+};
+
 const boardWrap: React.CSSProperties = {
 overflowX: "auto",
 border: "1px solid #e5e7eb",
@@ -263,6 +301,17 @@ fontSize: 12,
 color: "#1e3a8a",
 };
 
+const addBtn: React.CSSProperties = {
+background: "#f8fafc",
+border: "1px dashed #cbd5e1",
+color: "#475569",
+padding: "8px 10px",
+borderRadius: 10,
+cursor: "pointer",
+fontWeight: 600,
+width: "100%",
+};
+
 const outingBadge: React.CSSProperties = {
 marginTop: 6,
 display: "inline-block",
@@ -272,11 +321,6 @@ borderRadius: 999,
 padding: "4px 8px",
 fontSize: 11,
 fontWeight: 700,
-};
-
-const offTextStyle: React.CSSProperties = {
-color: "#94a3b8",
-fontWeight: 600,
 };
 
 const emptyState: React.CSSProperties = {

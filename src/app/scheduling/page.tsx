@@ -157,6 +157,20 @@ setIsOuting(false);
 setDailyLog("");
 }
 
+function handleAddShiftFromCalendar(house: string, day: string) {
+    setHouseName(house);
+    
+    const date = new Date();
+    const targetDay = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"].indexOf(day);
+    
+    const diff = targetDay - date.getDay();
+    date.setDate(date.getDate() + diff);
+    
+    setWorkDate(date.toISOString().slice(0,10));
+    
+    window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+
 async function saveSchedule(e: React.FormEvent) {
 e.preventDefault();
 setError(null);
@@ -468,8 +482,11 @@ onDelete={() => deleteShift(s.id)}
 </div>
 
 <div style={{ marginTop: 24 }}>
-<WeeklySchedule schedules={schedules} employees={employees} />
-</div>
+<WeeklySchedule
+schedules={schedules}
+employees={employees}
+onAddShift={handleAddShiftFromCalendar}
+/></div>
 </main>
 );
 }
