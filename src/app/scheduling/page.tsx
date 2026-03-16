@@ -6,6 +6,8 @@ import { supabase } from "../../supabaseClient";
 import ShiftCard from "../../components/ShiftCard";
 import WeeklySchedule from "../../components/WeeklySchedule";
 
+
+
 type ProfileRow = {
 id: string;
 org_id: string;

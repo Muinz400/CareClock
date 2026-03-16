@@ -1,5 +1,7 @@
 "use client";
 
+import {formatAppDate, formatAppTimeRange} from "../lib/time";
+
 type Shift = {
 id: string;
 employee_id: string;
@@ -24,21 +26,7 @@ onEdit: () => void;
 onDelete: () => void;
 };
 
-function formatWorkDate(value: string) {
-return new Date(value).toLocaleDateString("en-US", {
-weekday: "short",
-month: "short",
-day: "numeric",
-year: "numeric",
-});
-}
 
-function formatTimeRange(start: string | null, end: string | null) {
-if (!start && !end) return "Time not set";
-if (start && !end) return `${start} - --`;
-if (!start && end) return `-- - ${end}`;
-return `${start} - ${end}`;
-}
 
 export default function ShiftCard({
 shift,
@@ -60,7 +48,7 @@ return (
 )}
 </div>
 
-<div style={dateText}>{formatWorkDate(shift.work_date)}</div>
+<div style={dateText}>{formatAppDate(shift.work_date)}</div>
 </div>
 
 <div style={actionsRow}>
@@ -76,7 +64,7 @@ Delete
 <div style={metaGrid}>
 <div style={metaCard}>
 <div style={metaLabel}>Time</div>
-<div style={metaValue}>{formatTimeRange(shift.start_time, shift.end_time)}</div>
+<div style={metaValue}>{formatAppTimeRange(shift.start_time, shift.end_time)}</div>
 </div>
 
 <div style={metaCard}>
