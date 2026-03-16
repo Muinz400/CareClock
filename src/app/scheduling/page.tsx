@@ -21,7 +21,7 @@ type Schedule = {
 id: string;
 employee_id: string;
 org_id?: string;
-houseName: string | null;
+house_name: string | null;
 work_date: string;
 start_time: string | null;
 end_time: string | null;
@@ -134,7 +134,7 @@ setSchedules((data ?? []) as Schedule[]);
 function editShift(s: Schedule) {
 setEditingId(s.id);
 setEmployeeId(s.employee_id);
-setHouseName(s.houseName || "");
+setHouseName(s.house_name || "");
 setWorkDate(s.work_date);
 setStartTime(s.start_time || "");
 setEndTime(s.end_time || "");

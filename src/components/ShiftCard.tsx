@@ -3,7 +3,7 @@
 type Shift = {
 id: string;
 employee_id: string;
-houseName: string | null;
+house_name: string | null;
 work_date: string;
 start_time: string | null;
 end_time: string | null;
@@ -81,7 +81,7 @@ Delete
 
 <div style={metaCard}>
 <div style={metaLabel}>House</div>
-<div style={metaValue}>{shift.houseName || "—"}</div>
+<div style={metaValue}>{shift.house_name || "—"}</div>
 </div>
 
 <div style={metaCard}>
