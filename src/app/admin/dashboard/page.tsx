@@ -129,7 +129,8 @@ if (logError) {
 throw logError;
 }
 
-let status: "Clocked In" | "Clocked Out" | "No Activity" = "No Activity";
+let status: "Clocked In" | "Clocked Out" | "No Activity" =
+"No Activity";
 
 if (latestLog) {
 status =
@@ -280,24 +281,27 @@ Live employee clock activity and latest timesheet status.
 Auto-refreshing every 3 seconds
 </p>
 
-<div style={{ display: "flex", gap: 16, marginBottom: 24, flexWrap: "wrap" }}>
-<a href="/employees">
-<button style={navBtnStyle}>Employees</button>
-</a>
+<div
+style={{ display: "flex", gap: 16, marginBottom: 24, flexWrap: "wrap" }}
+>
+<button
+style={navBtnStyle}
+onClick={() => router.push("/admin/dashboard")}
+>
+Employees
+</button>
 
-<a href="/timesheets">
-<button style={navBtnStyle}>Timesheets</button>
-</a>
+<button style={navBtnStyle} onClick={() => router.push("/timesheets")}>
+Timesheets
+</button>
 
-<a href="/payroll">
-<button style={navBtnStyle}>Payroll</button>
-</a>
+<button style={navBtnStyle} onClick={() => router.push("/payroll")}>
+Payroll
+</button>
 
-<a href="/scheduling">
-<button style={navBtnStyle}>Scheduling</button>
-</a>
-
-
+<button style={navBtnStyle} onClick={() => router.push("/scheduling")}>
+Scheduling
+</button>
 </div>
 
 <div
@@ -313,7 +317,12 @@ background: "white",
 
 <form
 onSubmit={handleAddEmployee}
-style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center" }}
+style={{
+display: "flex",
+gap: 12,
+flexWrap: "wrap",
+alignItems: "center",
+}}
 >
 <input
 type="text"
