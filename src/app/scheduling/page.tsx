@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "../../supabaseClient";
 import ShiftCard from "../../components/ShiftCard";
@@ -18,7 +18,7 @@ id: string;
 name: string;
 };
 
-export default function SchedulingPage() {
+function SchedulingPageContent() {
 const router = useRouter();
 const searchParams = useSearchParams();
 const editId = searchParams.get("edit");
@@ -726,3 +726,11 @@ alignItems: "center",
 gap: 8,
 background: "#f8fafc",
 };
+
+export default function SchedulingPage() {
+    return (
+    <Suspense fallback={<main style={pageStyle}><p>Loading scheduling...</p></main>}>
+    <SchedulingPageContent />
+    </Suspense>
+    );
+    }
