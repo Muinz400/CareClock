@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "../../../supabaseClient";
-import { formatAppDateTime, formatAppDate } from "../../../lib/time";
+import { formatAppDateTime } from "../../../lib/time";
 
 type EmployeeRow = {
 id: string;
@@ -23,6 +23,21 @@ latitude: number | null;
 longitude: number | null;
 created_at: string | null;
 };
+
+function formatClockDate(value: string | null) {
+    if (!value) return "—";
+    
+    const date = new Date(value);
+    
+    if (Number.isNaN(date.getTime())) return "—";
+    
+    return date.toLocaleDateString("en-US", {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    });
+    }
 
 export default function EmployeeTimesheetsPage() {
 const router = useRouter();
@@ -219,7 +234,7 @@ Error: {error}
 </thead>
 <tbody>
 {logs.map((log) => {
-const dateLabel = formatAppDate(log.clock_in)
+const dateLabel = formatClockDate(log.clock_in);
 
 
 return (

@@ -158,7 +158,7 @@ refresh();
 
 const interval = setInterval(() => {
 refresh();
-}, 3000);
+}, 10000);
 
 const channel = supabase
 .channel("admin-clock-live")
@@ -268,7 +268,7 @@ Live employee clock activity and latest timesheet status.
 </p>
 
 <p style={{ opacity: 0.65, marginTop: -4, marginBottom: 20 }}>
-Auto-refreshing every 3 seconds
+Auto-refreshing every 10 seconds
 </p>
 
 <div style={{ display: "flex", gap: 16, marginBottom: 24, flexWrap: "wrap" }}>

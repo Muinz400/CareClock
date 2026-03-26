@@ -24,7 +24,7 @@ name: string;
 type WeeklyScheduleProps = {
 schedules: Schedule[];
 employees: Employee[];
-onAddShift: (house: string, day: string) => void;
+onAddShift: (house: string, clickedDate: string) => void;
 onEditShift: (shift: Schedule) => void;
 };
 
@@ -50,6 +50,13 @@ month: "short",
 day: "numeric",
 });
 }
+
+function formatDateKey(date: Date) {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+    }
 
 export default function WeeklySchedule({
 schedules,
@@ -123,9 +130,7 @@ return (
 Next ▶
 </button>
 
-<button onClick={handleExportPdf} style={exportBtn}>
-Export PDF
-</button>
+
 </div>
 
 </div>
@@ -155,24 +160,23 @@ Export PDF
 {house}
 </td>
 
-{DAYS.map((day) => {
+{DAYS.map((day, index) => {
+const cellDate = new Date(weekStart);
+cellDate.setDate(weekStart.getDate() + index);
 
+const clickedDate = formatDateKey(cellDate);
 const cellShifts = getCellShifts(house, day);
 
 return (
 <td key={day} style={cellStyle}>
-
 {cellShifts.length === 0 ? (
-
 <button
 style={addBtn}
-onClick={() => onAddShift(house, day)}
+onClick={() => onAddShift(house, clickedDate)}
 >
 + Add
 </button>
-
 ) : (
-
 <div style={shiftStackStyle}>
 
 {cellShifts.map((shift) => (

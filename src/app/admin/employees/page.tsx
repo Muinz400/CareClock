@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "../../../supabaseClient";
+import { formatAppDateTime } from "../../../lib/time";
 
 type Employee = {
 id: string;
@@ -132,16 +133,10 @@ return (
 <td style={td}>{emp.name}</td>
 <td style={td}>{emp.email}</td>
 <td style={td}>{getStatus(emp.id)}</td>
-<td style={td}>
-{log?.clock_in
-? new Date(log.clock_in).toLocaleString()
-: "—"}
-</td>
-<td style={td}>
-{log?.clock_out
-? new Date(log.clock_out).toLocaleString()
-: "—"}
-</td>
+
+
+<td style={td}>{formatAppDateTime(log?.clock_in ?? null)}</td>
+<td style={td}>{formatAppDateTime(log?.clock_out ?? null)}</td>
 
 <td style={td}>
 <div style={{ display: "flex", gap: 6 }}>

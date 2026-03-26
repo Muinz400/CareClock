@@ -85,7 +85,7 @@ return;
 if (profile.role === "admin") {
 router.push("/admin");
 } else {
-router.push("/employee/clock");
+router.push("/employee");
 }
 } catch (error) {
 console.error(error);

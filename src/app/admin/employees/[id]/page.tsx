@@ -3,11 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { supabase } from "../../../../supabaseClient";
-import {
-formatAppDate,
-formatAppDateTime,
-formatAppTimeRange,
-} from "../../../../lib/time";
+import {formatAppDate, formatAppDateTime, formatAppTimeRange} from "../../../../lib/time";
 
 type EmployeeRow = {
 id: string;

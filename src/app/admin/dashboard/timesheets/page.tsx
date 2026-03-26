@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "../../../../supabaseClient";
 import React from "react";
-import { formatAppDate, formatAppDateTime } from "../../../../lib/time";
+import { formatAppDateTime } from "../../../../lib/time";
 
 type ProfileRow = {
 id: string;
@@ -30,6 +30,25 @@ latitude: number | null;
 longitude: number | null;
 created_at: string | null;
 };
+
+function formatClockDate(value: string | null) {
+    if (!value) return "—";
+    
+    const date = new Date(value);
+    
+    if (Number.isNaN(date.getTime())) return "—";
+    
+    return date.toLocaleDateString("en-US", {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    });
+    }
+    
+    function getClockDateLabel(value: string | null) {
+    return formatClockDate(value);
+    }
 
 export default function TimesheetsPage() {
 const router = useRouter();
@@ -195,8 +214,8 @@ return `${hours.toFixed(2)} hrs (${totalMinutes} min)`;
 }
 
 function getAppDateLabel(value: string | null) {
-return formatAppDate(value);
-}
+    return getClockDateLabel(value);
+    }
 
 function formatHours(clockIn: string | null, clockOut: string | null) {
 if (!clockIn) return "—";
@@ -310,7 +329,7 @@ borderBottom: "1px solid #e5e7eb",
 
 {dayLogs.map((log) => (
 <tr key={log.id}>
-<td style={tdStyle}>{formatAppDate(log.clock_in)}</td>
+<td style={tdStyle}>{formatClockDate(log.clock_in)}</td>
 <td style={tdStyle}>
 {formatAppDateTime(log.clock_in)}
 </td>

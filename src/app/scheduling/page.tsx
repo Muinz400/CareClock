@@ -128,7 +128,7 @@ function handleEditShift(shift: Schedule) {
 setEditingId(shift.id);
 setEmployeeId(shift.employee_id);
 setHouseName(shift.house_name ?? "");
-setWorkDate(shift.work_date);
+setWorkDate(shift.work_date?.slice(0, 10) ?? "");
 setStartTime(shift.start_time ?? "");
 setEndTime(shift.end_time ?? "");
 setMileage(shift.mileage != null ? String(shift.mileage) : "");
@@ -149,28 +149,13 @@ setIsOuting(false);
 setDailyLog("");
 }
 
-function handleAddShiftFromCalendar(house: string, day: string) {
-setHouseName(house);
-
-const date = new Date();
-const targetDay = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].indexOf(
-day
-);
-
-const diff = targetDay - date.getDay();
-date.setDate(date.getDate() + diff);
-
-const localDate = new Intl.DateTimeFormat("en-CA", {
-timeZone: "America/Los_Angeles",
-year: "numeric",
-month: "2-digit",
-day: "2-digit",
-}).format(date);
-
-setWorkDate(localDate);
-
-window.scrollTo({ top: 0, behavior: "smooth" });
-}
+function handleAddShiftFromCalendar(house: string, clickedDate: string) {
+    setHouseName(house);
+    setWorkDate(clickedDate);
+    
+    window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+    
 
 async function saveSchedule(e: React.FormEvent) {
 e.preventDefault();
@@ -287,20 +272,265 @@ emp.name.toLowerCase().includes(shiftSearch.toLowerCase())
 }, [employees, shiftSearch]);
 
 const visibleSchedules = useMemo(() => {
-if (selectedShiftEmployeeId === "all") return schedules;
-return schedules.filter((s) => s.employee_id === selectedShiftEmployeeId);
-}, [schedules, selectedShiftEmployeeId]);
+    if (selectedShiftEmployeeId === "all") return schedules;
+    return schedules.filter((s) => s.employee_id === selectedShiftEmployeeId);
+    }, [schedules, selectedShiftEmployeeId]);
+    
+    function openWeeklySchedulePdfView() {
+        const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+        const houseNames = Array.from(
+            new Set(
+            schedules
+            .map((s) => s.house_name)
+            .filter((house): house is string => Boolean(house && house.trim()))
+            )
+            );
 
-if (!authReady && loading) {
-return (
-<main style={pageStyle}>
-<p>Loading scheduling...</p>
-</main>
-);
+        function getEmployeeName(employeeId: string) {
+        return employees.find((e) => e.id === employeeId)?.name ?? "Unknown";
+        }
+        
+        function getDayName(dateString: string) {
+        const [year, month, day] = dateString.split("-").map(Number);
+        const date = new Date(year, month - 1, day);
+        return days[date.getDay()];
+        }
+        
+        function formatTime12ForPrint(time: string | null) {
+        if (!time) return "—";
+        
+        const [hourStr, minuteStr] = time.split(":");
+        let hour = parseInt(hourStr, 10);
+        const minutes = minuteStr;
+        const ampm = hour >= 12 ? "PM" : "AM";
+        
+        hour = hour % 12;
+        if (hour === 0) hour = 12;
+        
+        return `${hour}:${minutes} ${ampm}`;
+        }
+        
+        function formatDateForPrint(dateString: string) {
+        const [year, month, day] = dateString.split("-").map(Number);
+        const date = new Date(year, month - 1, day);
+        
+        return date.toLocaleDateString("en-US", {
+        weekday: "short",
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+        });
+        }
+        
+        const groupedByHouseAndDay: Record<string, Record<string, Schedule[]>> = {};
+
+for (const house of houseNames) {
+groupedByHouseAndDay[house] = {
+Sun: [],
+Mon: [],
+Tue: [],
+Wed: [],
+Thu: [],
+Fri: [],
+Sat: [],
+};
 }
 
-return (
-<main style={pageStyle}>
+for (const shift of schedules) {
+const house = shift.house_name?.trim();
+if (!house || !groupedByHouseAndDay[house]) continue;
+
+const dayName = getDayName(shift.work_date);
+groupedByHouseAndDay[house][dayName].push(shift);
+}
+        
+        const html = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+        <title>Weekly Schedule</title>
+        <meta charset="utf-8" />
+        <style>
+        body {
+        font-family: Arial, sans-serif;
+        margin: 0;
+        padding: 24px;
+        color: #111827;
+        background: white;
+        }
+        
+        h1 {
+        margin: 0 0 6px 0;
+        font-size: 28px;
+        }
+        
+        .sub {
+        margin: 0 0 20px 0;
+        color: #6b7280;
+        font-size: 14px;
+        }
+        
+        .actions {
+        margin-bottom: 20px;
+        }
+        
+        .print-btn {
+        background: #2563eb;
+        color: white;
+        border: none;
+        padding: 10px 16px;
+        border-radius: 10px;
+        font-weight: 700;
+        cursor: pointer;
+        }
+        
+        .table-wrap {
+border: 1px solid #d1d5db;
+border-radius: 12px;
+overflow: hidden;
+}
+
+.grid {
+display: grid;
+grid-template-columns: 140px repeat(7, 1fr);
+}
+
+.cell {
+border-right: 1px solid #e5e7eb;
+border-bottom: 1px solid #e5e7eb;
+padding: 10px;
+min-height: 90px;
+background: #fff;
+}
+
+.header-cell {
+font-weight: 700;
+background: #f8fafc;
+min-height: auto;
+}
+
+.house-cell {
+font-weight: 700;
+background: #f8fafc;
+}
+
+
+        
+        .shift-card {
+        border: 1px solid #e5e7eb;
+        border-radius: 10px;
+        padding: 8px;
+        margin-bottom: 8px;
+        font-size: 12px;
+        line-height: 1.4;
+        background: #f9fafb;
+        }
+        
+        .employee {
+        font-weight: 700;
+        margin-bottom: 4px;
+        }
+        
+        .empty {
+        color: #9ca3af;
+        font-size: 12px;
+        }
+        
+        @media print {
+        .actions {
+        display: none !important;
+        }
+        
+        @page {
+        size: landscape;
+        margin: 16px;
+        }
+        
+        body {
+        padding: 16px;
+        }
+        }
+        </style>
+        </head>
+        <body>
+        <h1>Steps Towards Independence</h1>
+        <p class="sub">Weekly Staff Schedule</p>
+        <p class="sub">
+        Mar 22 – Mar 28
+        </p>
+        
+        <div class="actions">
+        <button class="print-btn" onclick="window.print()">Print / Save as PDF</button>
+        </div>
+        
+        <div class="table-wrap">
+<div class="grid">
+<div class="cell header-cell">House</div>
+${days.map((day) => `<div class="cell header-cell">${day}</div>`).join("")}
+
+${houseNames
+.map((house) => {
+return `
+<div class="cell house-cell">${house}</div>
+
+${days
+.map((day) => {
+const dayShifts = groupedByHouseAndDay[house][day];
+
+return `
+<div class="cell">
+${
+dayShifts.length === 0
+? `<div class="empty">—</div>`
+: dayShifts
+.map(
+(shift) => `
+<div class="shift-card">
+<div class="employee">${getEmployeeName(shift.employee_id)}</div>
+<div>${formatTime12ForPrint(shift.start_time)} - ${formatTime12ForPrint(shift.end_time)}</div>
+${shift.mileage != null ? `<div>Mileage: ${shift.mileage}</div>` : ""}
+</div>
+`
+)
+.join("")
+}
+</div>
+`;
+})
+.join("")}
+`;
+})
+.join("")}
+</div>
+</div>
+
+
+
+
+
+        </body>
+        </html>
+        `;
+        
+       
+        const popup = window.open("", "_blank", "width=1400,height=900");
+        if (!popup) return;
+        
+        popup.document.open();
+        popup.document.write(html);
+        popup.document.close();
+        popup.focus();
+        }
+        
+    
+    return (
+    <main style={pageStyle}>
+    
+    
+    
+    
+    
+    
 <div style={headerRow}>
 <div>
 <h1 style={{ margin: 0, fontSize: 36 }}>Scheduling</h1>
@@ -522,12 +752,26 @@ onDelete={() => deleteShift(s.id)}
 </div>
 
 <div style={{ marginTop: 24 }}>
+<div style={{ display: "flex", justifyContent: "space-between", marginBottom: 12 }}>
+<h2 style={{ margin: 0 }}>Weekly Schedule</h2>
+
+<button
+type="button"
+onClick={openWeeklySchedulePdfView}
+style={primaryBtn}
+>
+Export PDF
+</button>
+</div>
+
+<div id="weekly-schedule-print">
 <WeeklySchedule
 schedules={schedules}
 employees={employees}
 onAddShift={handleAddShiftFromCalendar}
 onEditShift={handleEditShift}
 />
+</div>
 </div>
 </main>
 );
@@ -728,9 +972,9 @@ background: "#f8fafc",
 };
 
 export default function SchedulingPage() {
-    return (
-    <Suspense fallback={<main style={pageStyle}><p>Loading scheduling...</p></main>}>
-    <SchedulingPageContent />
-    </Suspense>
-    );
-    }
+return (
+<Suspense fallback={<main style={pageStyle}><p>Loading scheduling...</p></main>}>
+<SchedulingPageContent />
+</Suspense>
+);
+}

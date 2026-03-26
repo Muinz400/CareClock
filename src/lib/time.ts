@@ -8,15 +8,16 @@ return hasTimezone ? value : `${value}Z`;
 }
 
 export function formatAppDate(value: string | null) {
-const normalized = normalizeUtcValue(value);
-if (!normalized) return "—";
+if (!value) return "—";
 
-return new Date(normalized).toLocaleDateString("en-US", {
+const [year, month, day] = value.split("-").map(Number);
+const date = new Date(year, month - 1, day);
+
+return date.toLocaleDateString("en-US", {
 weekday: "short",
 month: "short",
 day: "numeric",
 year: "numeric",
-timeZone: APP_TIMEZONE,
 });
 }
 
@@ -49,13 +50,6 @@ return `${formatAppTime(start)} - ${formatAppTime(end)}`;
 }
 
 export function getAppDateKey(value: string | null) {
-const normalized = normalizeUtcValue(value);
-if (!normalized) return "unknown";
-
-return new Intl.DateTimeFormat("en-CA", {
-timeZone: APP_TIMEZONE,
-year: "numeric",
-month: "2-digit",
-day: "2-digit",
-}).format(new Date(normalized));
+if (!value) return "unknown";
+return value;
 }
