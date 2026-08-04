@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { supabase } from "../../../supabaseClient";
-import { formatAppDateTime, formatAppDate } from "../../../lib/time";
+import { formatAppDateTime } from "../../../lib/time";
 
 type Employee = {
 id: string;
@@ -138,9 +138,9 @@ houseName: "Main House",
 }
 
 setRows(results);
-} catch (err: any) {
+} catch (err: unknown) {
 console.error(err);
-setError(err.message ?? "Failed to load admin dashboard.");
+setError(err instanceof Error ? err.message : "Failed to load admin dashboard.");
 } finally {
 setLoading(false);
 }
@@ -197,8 +197,16 @@ return;
 
 const hourlyRateNumber = Number(newEmployeeRate);
 
-if (Number.isNaN(hourlyRateNumber)) {
-alert("Hourly rate must be a number.");
+if (Number.isNaN(hourlyRateNumber) || hourlyRateNumber < 0) {
+alert("Hourly rate must be a valid non-negative number.");
+return;
+}
+
+const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+
+if (sessionError || !sessionData.session) {
+alert("Your session has expired. Please log in again.");
+router.push("/login");
 return;
 }
 
@@ -206,6 +214,7 @@ const response = await fetch("/api/create-employee", {
 method: "POST",
 headers: {
 "Content-Type": "application/json",
+Authorization: `Bearer ${sessionData.session.access_token}`,
 },
 body: JSON.stringify({
 name: newEmployeeName,
@@ -222,12 +231,14 @@ alert(result.error || "Failed to create employee.");
 return;
 }
 
+const invitedEmail = newEmployeeEmail;
+
 setNewEmployeeName("");
 setNewEmployeeEmail("");
 setNewEmployeeRate("");
 
 alert(
-`Employee created successfully. Temporary password: ${result.temporaryPassword}`
+`Invitation sent to ${invitedEmail}. They'll receive an email to set up their account.`
 );
 
 loadDashboard();

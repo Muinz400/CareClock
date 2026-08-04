@@ -300,6 +300,23 @@ https://care-clock-swart.vercel.app
 
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
+## Required Environment & Supabase Configuration
+
+The employee invitation flow (`/api/create-employee` and `/accept-invite`) requires the following to be configured in **every** environment (local development and production) before it will work end to end.
+
+**Environment variable**
+
+```
+APP_URL=http://localhost:3000
+```
+
+In production, set this to the deployed domain instead, e.g. `https://your-production-domain.com`. This value is used server-side only, to build the invite email's redirect link (`${APP_URL}/accept-invite`) inside `/api/create-employee`. It intentionally has **no `NEXT_PUBLIC_` prefix** — it is never bundled into client code and is read from server configuration only. It is never derived from the incoming request's origin or `Host` header, so a manipulated request cannot redirect an invite link to an untrusted domain. If this variable is missing or is not a valid `http(s)` URL, employee invitations will fail with a clear error instead of silently falling back to anything request-derived.
+
+**Supabase project configuration**
+
+- **Email delivery** must be enabled for the Supabase project (built-in email service or custom SMTP). Invitation emails will not send otherwise, and the API will return a clear error rather than a temporary password.
+- **`${APP_URL}/accept-invite`** must be added to that project's **Authentication → URL Configuration → Redirect URLs** allowlist, for every environment. If it isn't, Supabase will reject the `redirectTo` value and fall back to the project's default Site URL instead of the invite-acceptance page, breaking the onboarding flow for newly invited employees.
+
 ## Getting Started
 
 First, run the development server:
