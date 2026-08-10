@@ -28,3 +28,9 @@ export type { EmptyStateProps } from "./EmptyState";
 
 export { LoadingSpinner } from "./LoadingSpinner";
 export type { LoadingSpinnerProps, LoadingSpinnerSize } from "./LoadingSpinner";
+
+export { Panel } from "./Panel";
+export type { PanelProps, PanelSurface, PanelPadding } from "./Panel";
+
+export { StatusDot } from "./StatusDot";
+export type { StatusDotProps } from "./StatusDot";

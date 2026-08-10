@@ -67,6 +67,54 @@ export const radius = {
   lg: "var(--cc-radius-lg)",
   xl: "var(--cc-radius-xl)",
   full: "var(--cc-radius-full)",
+  structural: "var(--cc-radius-structural)",
+  overlay: "var(--cc-radius-overlay)",
+  action: "var(--cc-radius-action)",
+} as const;
+
+// ---- Operations Deck tokens (additive) ----
+// Fixed dark/light material identity — see globals.css for why these are
+// not prefers-color-scheme responsive. Not yet referenced by any existing
+// page or component; only the new shell components use these.
+
+export const shell = {
+  bg: "var(--cc-shell-bg)",
+  bg2: "var(--cc-shell-bg-2)",
+  bg3: "var(--cc-shell-bg-3)",
+  border: "var(--cc-shell-border)",
+  ink: "var(--cc-shell-ink)",
+  inkMuted: "var(--cc-shell-ink-muted)",
+  inkFaint: "var(--cc-shell-ink-faint)",
+} as const;
+
+export const paper = {
+  bg: "var(--cc-paper)",
+  surface: "var(--cc-paper-surface)",
+  surface2: "var(--cc-paper-surface-2)",
+  border: "var(--cc-paper-border)",
+  borderStrong: "var(--cc-paper-border-strong)",
+  ink: "var(--cc-paper-ink)",
+  inkMuted: "var(--cc-paper-ink-muted)",
+  inkFaint: "var(--cc-paper-ink-faint)",
+} as const;
+
+export const signal = {
+  base: "var(--cc-signal)",
+  strong: "var(--cc-signal-strong)",
+  softPaper: "var(--cc-signal-soft-paper)",
+  softShell: "var(--cc-signal-soft-shell)",
+} as const;
+
+export const action = {
+  off: "var(--cc-action-off)",
+  offStrong: "var(--cc-action-off-strong)",
+  on: "var(--cc-action-on)",
+  onStrong: "var(--cc-action-on-strong)",
+} as const;
+
+export const fontFamilyOpsDeck = {
+  sans: "var(--cc-font-family-sans)",
+  mono: "var(--cc-font-family-mono)",
 } as const;
 
 export const shadow = {
@@ -97,6 +145,11 @@ export const tokens = {
   shadow,
   transition,
   container,
+  shell,
+  paper,
+  signal,
+  action,
+  fontFamilyOpsDeck,
 } as const;
 
 export default tokens;

@@ -79,6 +79,53 @@
   --cc-container-lg: 960px;
   --cc-container-app: 1100px;
   --cc-container-xl: 1280px;
+
+  /* ---- Operations Deck tokens (additive — see migration plan) ----
+     Fixed visual identity, deliberately NOT responsive to
+     prefers-color-scheme: the dark shell / warm paper split is a fixed
+     material identity, not a light/dark mode toggle. Nothing below is
+     referenced by any existing component or page yet. */
+
+  /* Dark admin/caregiver shell */
+  --cc-shell-bg: #12201f;
+  --cc-shell-bg-2: #1a2c2a;
+  --cc-shell-bg-3: #223a37;
+  --cc-shell-border: #2a4643;
+  --cc-shell-ink: #edf3f1;
+  --cc-shell-ink-muted: #a9bdb8;
+  --cc-shell-ink-faint: #809691;
+
+  /* Warm paper workspace */
+  --cc-paper: #f6f3ec;
+  --cc-paper-surface: #fffdf9;
+  --cc-paper-surface-2: #efe9db;
+  --cc-paper-border: #e1dac8;
+  --cc-paper-border-strong: #cbc0a5;
+  --cc-paper-ink: #1a1f1c;
+  --cc-paper-ink-muted: #5c6259;
+  --cc-paper-ink-faint: #696e62;
+
+  /* Sparse admin signal (amber/gold) */
+  --cc-signal: #d3a34a;
+  --cc-signal-strong: #a97b25;
+  --cc-signal-soft-paper: #f3e6c8;
+  --cc-signal-soft-shell: rgba(211, 163, 74, 0.16);
+
+  /* Caregiver action states: vermillion (off-shift) / teal (on-shift) */
+  --cc-action-off: #c73a2e;
+  --cc-action-off-strong: #9c2c22;
+  --cc-action-on: #1f6e5c;
+  --cc-action-on-strong: #164f42;
+
+  /* Radius as purpose, not decoration — --cc-radius-full already covers pill */
+  --cc-radius-structural: 3px;
+  --cc-radius-overlay: 12px;
+  --cc-radius-action: 20px;
+
+  /* IBM Plex — --cc-font-plex-*-loaded injected by next/font/google in
+     src/app/layout.tsx; falls back to a considered system stack if unset. */
+  --cc-font-family-sans: var(--cc-font-plex-sans-loaded), -apple-system, "Segoe UI", sans-serif;
+  --cc-font-family-mono: var(--cc-font-plex-mono-loaded), ui-monospace, "SF Mono", Menlo, monospace;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -171,4 +218,110 @@ a {
 .cc-input:focus-visible {
   outline: 2px solid var(--cc-color-accent);
   outline-offset: 2px;
+}
+
+/* ---- Global baselines (additive, promoted for Operations Deck) ----
+   Lower specificity than the rules above, so anything already styled
+   (.cc-btn, .cc-input) keeps its existing focus outline unchanged; this
+   only fills the gap for elements — like the new shell nav — that don't
+   have their own focus-visible rule yet. */
+:focus-visible {
+  outline: 2px solid var(--cc-signal-strong);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ---- Operations Deck: AdminShell responsive grid ----
+   Only used by src/components/shell/AdminShell.tsx. Media queries and
+   transforms can't be expressed as inline styles, so — same pattern as
+   .cc-btn/.primary-btn above — this lives here as a small, single-purpose
+   utility class rather than a page-specific stylesheet. */
+.cc-admin-shell {
+  display: grid;
+  grid-template-columns: 236px 1fr;
+  grid-template-rows: 60px 1fr;
+  min-height: 100vh;
+}
+.cc-admin-shell.collapsed {
+  grid-template-columns: 64px 1fr;
+}
+.cc-admin-shell-sidebar {
+  grid-column: 1;
+  grid-row: 1 / span 2;
+  transition: width var(--cc-transition-base);
+}
+.cc-admin-shell-topbar {
+  grid-column: 2;
+  grid-row: 1;
+}
+.cc-admin-shell-main {
+  grid-column: 2;
+  grid-row: 2;
+  overflow: auto;
+}
+.cc-admin-sidebar-backdrop {
+  display: none;
+}
+
+@media (max-width: 900px) {
+  .cc-admin-mobile-nav-trigger {
+    display: inline-flex !important;
+  }
+  .cc-admin-shell,
+  .cc-admin-shell.collapsed {
+    grid-template-columns: 1fr;
+  }
+  .cc-admin-shell-sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    z-index: 1100;
+    width: 250px;
+    transform: translateX(-100%);
+    transition: transform var(--cc-transition-base);
+  }
+  .cc-admin-shell-sidebar.mobile-open {
+    transform: translateX(0);
+  }
+  .cc-admin-shell-topbar,
+  .cc-admin-shell-main {
+    grid-column: 1;
+  }
+  .cc-admin-sidebar-backdrop.show {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 1099;
+    background: rgba(10, 14, 13, 0.5);
+  }
+}
+
+/* ---- Operations Deck: CaregiverShell bottom nav ----
+   Only used by src/components/shell/BottomNav.tsx. */
+.cc-caregiver-tabbar {
+  display: flex;
+  border-top: 1px solid var(--cc-shell-border);
+  background: var(--cc-shell-bg-2);
+  padding: 8px 4px calc(10px + env(safe-area-inset-bottom));
+}
+.cc-caregiver-tab {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  font-size: 10px;
+  padding: 8px 0;
+  min-height: 44px;
 }

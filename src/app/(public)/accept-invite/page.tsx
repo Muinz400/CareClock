@@ -2,7 +2,7 @@
 
 import { type FormEvent, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { supabase } from "../../supabaseClient";
+import { supabase } from "../../../supabaseClient";
 
 type PageStatus = "resolving" | "ready" | "submitting" | "invalid" | "success";
 

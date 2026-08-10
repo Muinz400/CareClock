@@ -17,8 +17,12 @@ import { LegacyHeader } from "./LegacyHeader";
   feature flags — that all stays where it already lives, on each page,
   until that page's own migration step centralizes it into a real shell.
 */
-const MIGRATED_PREFIXES: string[] = [];
+const MIGRATED_PREFIXES: string[] = ["/", "/login", "/accept-invite", "/home", "/today"];
 
+// "/" only ever matches the exact root path here. For any other pathname,
+// the startsWith check becomes pathname.startsWith("//") — which no real
+// Next.js route ever starts with — so "/" cannot accidentally swallow
+// every route the way a naive prefix check might.
 function isMigrated(pathname: string | null): boolean {
   if (!pathname) return false;
   return MIGRATED_PREFIXES.some(
