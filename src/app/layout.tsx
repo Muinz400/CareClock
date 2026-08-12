@@ -24,8 +24,8 @@ const plexMono = IBM_Plex_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "CareClock",
-  description: "A simple GPS-Verified timesheet for home care agencies",
+  title: "CareClock — Workforce Operations for Caregiving Agencies",
+  description: "Scheduling, location-aware time tracking, timesheets, mileage, and payroll preparation for caregiving agencies.",
 };
 
 type RootLayoutProps = {
