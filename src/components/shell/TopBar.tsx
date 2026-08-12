@@ -6,9 +6,10 @@ import { tokens } from "../../styles/tokens";
 
 export interface TopBarProps {
   onOpenMobileNav: () => void;
+  adminName: string | null;
 }
 
-export function TopBar({ onOpenMobileNav }: TopBarProps) {
+export function TopBar({ onOpenMobileNav, adminName }: TopBarProps) {
   const router = useRouter();
 
   async function handleSignOut() {
@@ -54,17 +55,15 @@ export function TopBar({ onOpenMobileNav }: TopBarProps) {
         </svg>
       </button>
 
-      {/* Static label — not a per-org fetch, see Step 2 auth scope */}
+      {/* Real admin identity, resolved once by AdminShell's session guard */}
       <span
         style={{
-          fontFamily: tokens.fontFamilyOpsDeck.mono,
-          fontSize: 11,
-          letterSpacing: "0.08em",
-          textTransform: "uppercase",
-          color: tokens.shell.inkFaint,
+          fontSize: tokens.typography.size.sm,
+          fontWeight: tokens.typography.weight.semibold,
+          color: tokens.shell.ink,
         }}
       >
-        CareClock
+        {adminName || "Admin"}
       </span>
 
       <button
