@@ -38,6 +38,7 @@ export function Sidebar({ collapsed = false }: { collapsed?: boolean }) {
         borderRight: `1px solid ${tokens.shell.border}`,
         height: "100%",
         overflow: "hidden",
+        fontFamily: tokens.fontFamilyOpsDeck.sans,
       }}
     >
       <div

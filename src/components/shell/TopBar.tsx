@@ -28,6 +28,7 @@ export function TopBar({ onOpenMobileNav, adminName }: TopBarProps) {
         height: 60,
         background: tokens.shell.bg,
         borderBottom: `1px solid ${tokens.shell.border}`,
+        fontFamily: tokens.fontFamilyOpsDeck.sans,
       }}
     >
       <button
