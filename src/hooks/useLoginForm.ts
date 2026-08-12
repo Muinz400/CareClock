@@ -94,7 +94,7 @@ export function useLoginForm() {
       }
 
       if (profile.role === "admin") {
-        router.push("/admin");
+        router.push("/home");
       } else {
         router.push("/employee");
       }
