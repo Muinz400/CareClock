@@ -1,6 +1,6 @@
 export const APP_TIMEZONE = "America/Los_Angeles";
 
-function normalizeUtcValue(value: string | null) {
+export function normalizeUtcValue(value: string | null) {
 if (!value) return null;
 
 const hasTimezone = /([zZ]|[+-]\d{2}:\d{2})$/.test(value);
@@ -52,4 +52,15 @@ return `${formatAppTime(start)} - ${formatAppTime(end)}`;
 export function getAppDateKey(value: string | null) {
 if (!value) return "unknown";
 return value;
+}
+
+// "en-CA" formats as YYYY-MM-DD, matching the plain date-string format
+// already used for schedules.work_date elsewhere in the app.
+export function getAppTodayISODate() {
+return new Intl.DateTimeFormat("en-CA", {
+timeZone: APP_TIMEZONE,
+year: "numeric",
+month: "2-digit",
+day: "2-digit",
+}).format(new Date());
 }

@@ -34,3 +34,9 @@ export type { PanelProps, PanelSurface, PanelPadding } from "./Panel";
 
 export { StatusDot } from "./StatusDot";
 export type { StatusDotProps } from "./StatusDot";
+
+export { SectionHeader } from "./SectionHeader";
+export type { SectionHeaderProps } from "./SectionHeader";
+
+export { StatusBand } from "./StatusBand";
+export type { StatusBandProps, StatusBandItem } from "./StatusBand";
