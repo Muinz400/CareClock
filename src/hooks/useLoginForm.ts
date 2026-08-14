@@ -96,7 +96,7 @@ export function useLoginForm() {
       if (profile.role === "admin") {
         router.push("/home");
       } else {
-        router.push("/employee");
+        router.push("/today");
       }
     } catch (error) {
       console.error(error);
