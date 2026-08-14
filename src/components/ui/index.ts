@@ -40,3 +40,6 @@ export type { SectionHeaderProps } from "./SectionHeader";
 
 export { StatusBand } from "./StatusBand";
 export type { StatusBandProps, StatusBandItem } from "./StatusBand";
+
+export { ClockAction } from "./ClockAction";
+export type { ClockActionProps, ClockActionStatus } from "./ClockAction";

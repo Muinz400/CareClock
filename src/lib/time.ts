@@ -64,3 +64,30 @@ month: "2-digit",
 day: "2-digit",
 }).format(new Date());
 }
+
+// Sunday-Saturday week boundary. This intentionally matches the existing
+// Sunday-start convention already used by payroll/page.tsx's own local
+// startOfWeekSunday() — same interpretation of "week", not a competing
+// one. That function stays where it is (untouched); this is a fresh,
+// independent implementation so nothing there needs to change for this
+// to exist. Not Monday-start, not locale-dependent (Intl's default
+// first-day-of-week varies by locale — deliberately not used here).
+//
+// Returns a YYYY-MM-DD date key, same shape as getAppTodayISODate(), for
+// the Sunday that starts the week containing referenceDateKey (defaults
+// to today). Callers needing a timestamp boundary for a clock_logs query
+// append "T00:00:00Z", matching normalizeUtcValue's existing UTC
+// convention for these columns.
+export function getWeekStartISODate(referenceDateKey?: string) {
+const dateKey = referenceDateKey ?? getAppTodayISODate();
+const [year, month, day] = dateKey.split("-").map(Number);
+
+const date = new Date(year, month - 1, day);
+date.setDate(date.getDate() - date.getDay());
+
+const y = date.getFullYear();
+const m = String(date.getMonth() + 1).padStart(2, "0");
+const d = String(date.getDate()).padStart(2, "0");
+
+return `${y}-${m}-${d}`;
+}

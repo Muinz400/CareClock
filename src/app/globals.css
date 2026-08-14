@@ -325,3 +325,34 @@ a {
   padding: 8px 0;
   min-height: 44px;
 }
+
+/* ---- Operations Deck: ClockAction pulse ----
+   Only used by src/components/ui/ClockAction.tsx. One restrained pulse
+   on a successful state transition, never a looping/idle animation.
+   Respects the global prefers-reduced-motion rule above (this file,
+   earlier) automatically — no separate opt-out needed here. */
+@keyframes cc-clock-action-pulse-off {
+  0% {
+    box-shadow: 0 0 0 0 rgba(199, 58, 46, 0.45);
+  }
+  100% {
+    box-shadow: 0 0 0 22px rgba(199, 58, 46, 0);
+  }
+}
+@keyframes cc-clock-action-pulse-on {
+  0% {
+    box-shadow: 0 0 0 0 rgba(31, 110, 92, 0.45);
+  }
+  100% {
+    box-shadow: 0 0 0 22px rgba(31, 110, 92, 0);
+  }
+}
+.cc-clock-action-pulse-off {
+  animation: cc-clock-action-pulse-off 900ms cubic-bezier(0.2, 0.8, 0.2, 1) 1;
+}
+.cc-clock-action-pulse-on {
+  animation: cc-clock-action-pulse-on 900ms cubic-bezier(0.2, 0.8, 0.2, 1) 1;
+}
+.cc-clock-action:active:not(:disabled) {
+  transform: scale(0.97);
+}

@@ -14,8 +14,13 @@ interface TabItem {
 
 const TAB_ITEMS: TabItem[] = [
   { label: "Today", href: "/today", available: true },
-  { label: "Schedule", href: "/my/schedule", available: false },
-  { label: "Timesheet", href: "/my/timesheet", available: false },
+  // Legacy destinations, not yet migrated to /my/schedule and
+  // /my/timesheet — pointed at real, working pages rather than left as
+  // "Soon" placeholders. Navigating here exits CaregiverShell for the
+  // legacy LegacyHeader-wrapped chrome; see /today's implementation
+  // notes for why that's an accepted transitional handoff, not a bug.
+  { label: "Schedule", href: "/employee/shifts", available: true },
+  { label: "Timesheet", href: "/employee/timesheets", available: true },
   { label: "Profile", href: "/my/profile", available: false },
 ];
 
