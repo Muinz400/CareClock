@@ -128,7 +128,7 @@ export default function AcceptInvitePage() {
     setStatus("success");
 
     setTimeout(() => {
-      router.push("/employee/clock");
+      router.push("/today");
     }, 1500);
   }
 
