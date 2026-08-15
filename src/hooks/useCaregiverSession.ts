@@ -36,6 +36,7 @@ export type CaregiverEmployee = {
   user_id: string | null;
   name: string;
   email: string;
+  is_active: boolean;
 };
 
 export type CaregiverSessionValue = {
@@ -93,7 +94,7 @@ export function useCaregiverSessionState(): CaregiverSessionState {
 
         const { data: employee, error: employeeError } = await supabase
           .from("employees")
-          .select("id, user_id, name, email")
+          .select("id, user_id, name, email, is_active")
           .eq("user_id", user.id)
           .single();
 
@@ -107,9 +108,19 @@ export function useCaregiverSessionState(): CaregiverSessionState {
           return;
         }
 
+        const caregiverEmployee = employee as CaregiverEmployee;
+
+        if (!caregiverEmployee.is_active) {
+          setState({
+            status: "error",
+            message: "Your employee account is inactive. Please contact your administrator.",
+          });
+          return;
+        }
+
         setState({
           status: "ready",
-          value: { profile: caregiverProfile, employee: employee as CaregiverEmployee },
+          value: { profile: caregiverProfile, employee: caregiverEmployee },
         });
       } catch (err) {
         if (cancelled) return;

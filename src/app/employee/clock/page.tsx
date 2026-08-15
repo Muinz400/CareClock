@@ -29,6 +29,7 @@ type EmployeeRow = {
   user_id: string | null;
   name: string;
   email: string;
+  is_active: boolean;
 };
 
 type Feedback = { type: "success" | "error"; message: string };
@@ -73,6 +74,7 @@ export default function ClockPage() {
 
   const [employee, setEmployee] = useState<EmployeeRow | null>(null);
   const [authReady, setAuthReady] = useState(false);
+  const [inactive, setInactive] = useState(false);
   const [feedback, setFeedback] = useState<Feedback | null>(null);
 
   const loadEmployeeAndClockLog = useCallback(async () => {
@@ -89,7 +91,7 @@ export default function ClockPage() {
 
     const { data: employeeRow, error: employeeError } = await supabase
       .from("employees")
-      .select("id, user_id, name, email")
+      .select("id, user_id, name, email, is_active")
       .eq("user_id", user.id)
       .single();
 
@@ -102,6 +104,12 @@ export default function ClockPage() {
     }
 
     setEmployee(employeeRow);
+
+    if (!employeeRow.is_active) {
+      setInactive(true);
+      setAuthReady(true);
+      return;
+    }
 
     const { data, error } = await supabase
       .from("clock_logs")
@@ -315,6 +323,16 @@ export default function ClockPage() {
     return (
       <main style={{ padding: tokens.spacing[6] }}>
         <LoadingSpinner size="lg" label="Loading employee session..." />
+      </main>
+    );
+  }
+
+  if (inactive) {
+    return (
+      <main style={{ padding: tokens.spacing[6], maxWidth: tokens.container.lg, margin: "0 auto" }}>
+        <Alert variant="danger">
+          Your employee account is inactive. Please contact your administrator.
+        </Alert>
       </main>
     );
   }

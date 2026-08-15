@@ -36,7 +36,7 @@ import { SectionHeader, StatusBand, EmptyState, LoadingSpinner, Panel } from "..
   a migration — out of scope for this page.
 */
 
-type EmployeeDetail = { id: string; name: string; email: string; hourly_rate: number | null };
+type EmployeeDetail = { id: string; name: string; email: string; hourly_rate: number | null; is_active: boolean };
 type ScheduleRow = {
   id: string;
   employee_id: string;
@@ -130,6 +130,7 @@ export default function PersonDetailPage() {
 
   const [feedback, setFeedback] = useState<Feedback | null>(null);
   const [saving, setSaving] = useState(false);
+  const [statusSaving, setStatusSaving] = useState(false);
   const [editingLog, setEditingLog] = useState<ClockLogRow | null>(null);
 
   const now = new Date();
@@ -168,7 +169,7 @@ export default function PersonDetailPage() {
       // admin's org. Nothing else queries until this succeeds.
       const { data: employeeRow, error: employeeError } = await supabase
         .from("employees")
-        .select("id, name, email, hourly_rate")
+        .select("id, name, email, hourly_rate, is_active")
         .eq("id", employeeId)
         .eq("org_id", orgId)
         .maybeSingle();
@@ -256,6 +257,59 @@ export default function PersonDetailPage() {
   function cancelEdit() {
     setEditingLog(null);
     setFeedback(null);
+  }
+
+  async function toggleEmploymentStatus() {
+    if (!employee) return;
+
+    const nextActive = !employee.is_active;
+
+    const confirmMessage = nextActive
+      ? `Reactivate ${employee.name} (${employee.email})?\n\nThis restores employee access and the ability to clock in.`
+      : `Deactivate ${employee.name} (${employee.email})?\n\nDeactivating this employee prevents future employee access and clock-ins. Historical time, schedules, and payroll-related records are preserved.`;
+
+    if (!window.confirm(confirmMessage)) return;
+
+    setStatusSaving(true);
+    setFeedback(null);
+
+    const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+
+    if (sessionError || !sessionData.session) {
+      setFeedback({ type: "error", message: "Your session has expired. Please log in again." });
+      setStatusSaving(false);
+      return;
+    }
+
+    try {
+      const response = await fetch("/api/deactivate-employee", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${sessionData.session.access_token}`,
+        },
+        body: JSON.stringify({ employeeId: employee.id, active: nextActive }),
+      });
+
+      const result = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        setFeedback({
+          type: "error",
+          message: result.error || `Failed to ${nextActive ? "reactivate" : "deactivate"} employee.`,
+        });
+        setStatusSaving(false);
+        return;
+      }
+
+      setEmployee({ ...employee, is_active: nextActive });
+      setFeedback({ type: "success", message: nextActive ? "Employee reactivated." : "Employee deactivated." });
+    } catch (err) {
+      console.error(err);
+      setFeedback({ type: "error", message: "Couldn't reach the server. Please try again." });
+    } finally {
+      setStatusSaving(false);
+    }
   }
 
   async function adminClockInNow() {
@@ -569,6 +623,49 @@ export default function PersonDetailPage() {
               : []),
           ]}
         />
+      </section>
+
+      <section style={{ marginBottom: tokens.spacing[7] }}>
+        <SectionHeader>Employment Status</SectionHeader>
+        <Panel padding="md">
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              gap: tokens.spacing[3],
+              flexWrap: "wrap",
+            }}
+          >
+            <div style={{ fontWeight: tokens.typography.weight.semibold, fontSize: tokens.typography.size.base }}>
+              {employee.is_active ? "Active" : "Inactive"}
+            </div>
+            <button
+              type="button"
+              onClick={toggleEmploymentStatus}
+              disabled={statusSaving}
+              className="cc-btn"
+              style={{
+                ...actionButtonStyle,
+                background: employee.is_active ? tokens.colors.danger : tokens.colors.success,
+                color: "#ffffff",
+                border: "none",
+              }}
+            >
+              {statusSaving
+                ? "Saving..."
+                : employee.is_active
+                ? "Deactivate Employee"
+                : "Reactivate Employee"}
+            </button>
+          </div>
+          {!employee.is_active && (
+            <p style={{ margin: `${tokens.spacing[3]} 0 0`, fontSize: tokens.typography.size.sm, color: tokens.paper.inkMuted }}>
+              This employee cannot access employee tools or clock in while inactive. Historical time, schedules, and
+              payroll-related records remain intact.
+            </p>
+          )}
+        </Panel>
       </section>
 
       <section style={{ marginBottom: tokens.spacing[7] }}>

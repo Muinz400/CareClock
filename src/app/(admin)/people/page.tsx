@@ -27,10 +27,11 @@ import { SectionHeader, StatusDot, EmptyState, LoadingSpinner } from "../../../c
   so it naturally stops showing once the admin navigates elsewhere.
 */
 
-type EmployeeLite = { id: string; name: string; email: string; hourly_rate: number | null };
+type EmployeeLite = { id: string; name: string; email: string; hourly_rate: number | null; is_active: boolean };
 type ClockLogLite = { id: string; employee_id: string; clock_in: string | null; clock_out: string | null };
 
 type AttendanceStatus = "clocked-in" | "clocked-out" | "no-activity";
+type EmploymentTab = "active" | "inactive";
 
 type PersonRow = {
   employeeId: string;
@@ -38,6 +39,7 @@ type PersonRow = {
   email: string;
   hourlyRate: number | null;
   status: AttendanceStatus;
+  isActive: boolean;
 };
 
 const STATUS_LABEL: Record<AttendanceStatus, string> = {
@@ -59,6 +61,7 @@ export default function PeoplePage() {
   const [error, setError] = useState<string | null>(null);
   const [people, setPeople] = useState<PersonRow[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
+  const [employmentTab, setEmploymentTab] = useState<EmploymentTab>("active");
 
   useEffect(() => {
     let cancelled = false;
@@ -70,7 +73,7 @@ export default function PeoplePage() {
       try {
         const { data: employeeRows, error: employeesError } = await supabase
           .from("employees")
-          .select("id, name, email, hourly_rate")
+          .select("id, name, email, hourly_rate, is_active")
           .eq("org_id", orgId)
           .order("name");
 
@@ -113,6 +116,7 @@ export default function PeoplePage() {
             email: employee.email,
             hourlyRate: employee.hourly_rate,
             status,
+            isActive: employee.is_active,
           };
         });
 
@@ -132,13 +136,21 @@ export default function PeoplePage() {
     };
   }, [orgId]);
 
+  const tabPeople = useMemo(
+    () => people.filter((person) => (employmentTab === "active" ? person.isActive : !person.isActive)),
+    [people, employmentTab]
+  );
+
   const filteredPeople = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
-    if (!query) return people;
-    return people.filter(
+    if (!query) return tabPeople;
+    return tabPeople.filter(
       (person) => person.name.toLowerCase().includes(query) || person.email.toLowerCase().includes(query)
     );
-  }, [people, searchQuery]);
+  }, [tabPeople, searchQuery]);
+
+  const activeCount = useMemo(() => people.filter((p) => p.isActive).length, [people]);
+  const inactiveCount = people.length - activeCount;
 
   if (loading) {
     return (
@@ -237,6 +249,35 @@ export default function PeoplePage() {
           />
         ) : (
           <>
+            <div role="tablist" aria-label="Employment status" style={{ display: "flex", gap: tokens.spacing[2], marginBottom: tokens.spacing[4] }}>
+              {(["active", "inactive"] as const).map((tab) => {
+                const isSelected = employmentTab === tab;
+                const count = tab === "active" ? activeCount : inactiveCount;
+                return (
+                  <button
+                    key={tab}
+                    type="button"
+                    role="tab"
+                    aria-selected={isSelected}
+                    onClick={() => setEmploymentTab(tab)}
+                    className="cc-btn"
+                    style={{
+                      minHeight: 40,
+                      padding: `${tokens.spacing[2]} ${tokens.spacing[4]}`,
+                      borderRadius: tokens.radius.structural,
+                      border: `1px solid ${isSelected ? tokens.signal.base : tokens.paper.border}`,
+                      background: isSelected ? tokens.signal.softPaper : tokens.paper.surface,
+                      color: isSelected ? tokens.signal.strong : tokens.paper.inkMuted,
+                      fontSize: tokens.typography.size.sm,
+                      fontWeight: isSelected ? tokens.typography.weight.bold : tokens.typography.weight.regular,
+                    }}
+                  >
+                    {tab === "active" ? "Active" : "Inactive"} ({count})
+                  </button>
+                );
+              })}
+            </div>
+
             <input
               type="text"
               value={searchQuery}
@@ -259,8 +300,14 @@ export default function PeoplePage() {
 
             {filteredPeople.length === 0 ? (
               <EmptyState
-                title="No matches"
-                description={`No employees match "${searchQuery}".`}
+                title={searchQuery ? "No matches" : `No ${employmentTab} employees`}
+                description={
+                  searchQuery
+                    ? `No employees match "${searchQuery}".`
+                    : employmentTab === "active"
+                    ? "No active employees in your organization."
+                    : "No employees are currently marked inactive."
+                }
                 style={{ background: tokens.paper.surface2, border: `1px dashed ${tokens.paper.border}` }}
               />
             ) : (
@@ -285,6 +332,9 @@ export default function PeoplePage() {
                         Status
                       </th>
                       <th scope="col" style={thStyle}>
+                        Employment
+                      </th>
+                      <th scope="col" style={thStyle}>
                         Hourly Rate
                       </th>
                       <th scope="col" style={{ ...thStyle, textAlign: "right" }}>
@@ -301,6 +351,9 @@ export default function PeoplePage() {
                         <td style={tdStyle}>{person.email}</td>
                         <td style={tdStyle}>
                           <StatusDot active={person.status === "clocked-in"} label={STATUS_LABEL[person.status]} />
+                        </td>
+                        <td style={tdStyle}>
+                          <StatusDot active={person.isActive} label={person.isActive ? "Active" : "Inactive"} />
                         </td>
                         <td style={{ ...tdStyle, fontFamily: tokens.fontFamilyOpsDeck.mono }}>
                           {formatHourlyRate(person.hourlyRate)}
