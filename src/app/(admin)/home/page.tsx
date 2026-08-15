@@ -49,7 +49,7 @@ type ActivityEvent = {
 };
 
 const QUICK_ACTIONS = [
-  { label: "+ Add Employee", href: "/admin/dashboard" },
+  { label: "+ Add Employee", href: "/people/new" },
   { label: "+ New Shift", href: "/scheduling" },
   { label: "Time & Attendance", href: "/time/live" },
   { label: "Payroll", href: "/payroll" },
