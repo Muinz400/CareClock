@@ -2,21 +2,29 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { useAdminProfile } from "../../../hooks/useAdminSession";
 import { supabase } from "../../../supabaseClient";
 import { tokens } from "../../../styles/tokens";
 import { SectionHeader, StatusDot, EmptyState, LoadingSpinner } from "../../../components/ui";
 
 /*
-  People -> directory (People A). Org-scoped employee registry with
-  clock-in status, reusing /time/live's exact fetch/derive pattern (org-
-  scoped employees, one batched clock_logs query, reduced to each
-  employee's latest row). No polling/realtime here — this is a directory,
-  not a live monitoring surface, so a single load is honest and sufficient.
+  People -> directory (People A, extended in People C). Org-scoped
+  employee registry with clock-in status, reusing /time/live's exact
+  fetch/derive pattern (org-scoped employees, one batched clock_logs
+  query, reduced to each employee's latest row). No polling/realtime
+  here — this is a directory, not a live monitoring surface, so a single
+  load is honest and sufficient.
 
-  Manage still routes to /admin/employees/{id} — /people/[id] doesn't
-  exist yet (People B). Add Employee stays on legacy /admin/dashboard
-  until People C. Both are deliberate, not oversights.
+  Manage routes to /people/{id} (People B). Add Employee routes to
+  /people/new (People C) — Admin Home's own "+ Add Employee" Quick
+  Action still points at legacy /admin/dashboard until that link flips
+  in its own later follow-up, per the same canonical-link discipline
+  already used throughout this migration.
+
+  ?invited=1 drives a one-off success banner after a successful invite
+  from /people/new — sourced directly from the URL, not persisted state,
+  so it naturally stops showing once the admin navigates elsewhere.
 */
 
 type EmployeeLite = { id: string; name: string; email: string; hourly_rate: number | null };
@@ -44,6 +52,8 @@ function formatHourlyRate(rate: number | null): string {
 
 export default function PeoplePage() {
   const { org_id: orgId } = useAdminProfile();
+  const searchParams = useSearchParams();
+  const showInvitedSuccess = searchParams.get("invited") === "1";
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -140,14 +150,64 @@ export default function PeoplePage() {
 
   return (
     <div>
-      <div style={{ marginBottom: tokens.spacing[7] }}>
-        <h1 style={{ fontSize: tokens.typography.size["2xl"], fontWeight: tokens.typography.weight.bold, margin: "0 0 4px" }}>
-          People
-        </h1>
-        <p style={{ margin: 0, color: tokens.paper.inkMuted, fontSize: tokens.typography.size.sm }}>
-          {people.length} employee{people.length === 1 ? "" : "s"} in your organization
-        </p>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "flex-start",
+          gap: tokens.spacing[3],
+          flexWrap: "wrap",
+          marginBottom: tokens.spacing[7],
+        }}
+      >
+        <div>
+          <h1 style={{ fontSize: tokens.typography.size["2xl"], fontWeight: tokens.typography.weight.bold, margin: "0 0 4px" }}>
+            People
+          </h1>
+          <p style={{ margin: 0, color: tokens.paper.inkMuted, fontSize: tokens.typography.size.sm }}>
+            {people.length} employee{people.length === 1 ? "" : "s"} in your organization
+          </p>
+        </div>
+
+        <Link
+          href="/people/new"
+          className="cc-btn"
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            padding: `${tokens.spacing[3]} ${tokens.spacing[4]}`,
+            minHeight: 44,
+            borderRadius: tokens.radius.structural,
+            border: "none",
+            background: tokens.signal.base,
+            color: "#1a1305",
+            fontSize: tokens.typography.size.sm,
+            fontWeight: tokens.typography.weight.bold,
+            textDecoration: "none",
+          }}
+        >
+          + Add Employee
+        </Link>
       </div>
+
+      {showInvitedSuccess && (
+        <div
+          role="status"
+          aria-live="polite"
+          aria-atomic="true"
+          style={{
+            marginBottom: tokens.spacing[5],
+            padding: tokens.spacing[3],
+            border: `1px solid ${tokens.colors.success}`,
+            borderRadius: tokens.radius.structural,
+            color: tokens.colors.successInk,
+            background: tokens.colors.successSoft,
+            fontSize: tokens.typography.size.sm,
+          }}
+        >
+          Employee invitation sent successfully.
+        </div>
+      )}
 
       {error && (
         <div
