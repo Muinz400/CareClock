@@ -21,7 +21,7 @@ interface TimeTab {
 
 const TIME_TABS: TimeTab[] = [
   { label: "Live", href: "/time/live", available: true },
-  { label: "Timesheets", href: "/time/timesheets", available: false },
+  { label: "Timesheets", href: "/time/timesheets", available: true },
   { label: "Exceptions", href: "/time/exceptions", available: false },
 ];
 
