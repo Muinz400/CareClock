@@ -17,7 +17,7 @@ import { LegacyHeader } from "./LegacyHeader";
   feature flags — that all stays where it already lives, on each page,
   until that page's own migration step centralizes it into a real shell.
 */
-const MIGRATED_PREFIXES: string[] = ["/", "/login", "/accept-invite", "/home", "/today"];
+const MIGRATED_PREFIXES: string[] = ["/", "/login", "/accept-invite", "/home", "/today", "/time"];
 
 // "/" only ever matches the exact root path here. For any other pathname,
 // the startsWith check becomes pathname.startsWith("//") — which no real
