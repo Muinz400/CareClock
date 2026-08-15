@@ -300,7 +300,7 @@ export default function AdminHomePage() {
                   </div>
                 </div>
                 <Link
-                  href={`/admin/employees/${item.employeeId}`}
+                  href={`/people/${item.employeeId}`}
                   className="cc-btn"
                   style={{
                     flex: "none",

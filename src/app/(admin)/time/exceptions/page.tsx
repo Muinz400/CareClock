@@ -364,7 +364,7 @@ export default function TimeExceptionsPage() {
                   </div>
                 </div>
                 <Link
-                  href={`/admin/employees/${issue.employeeId}`}
+                  href={`/people/${issue.employeeId}`}
                   className="cc-btn"
                   style={{
                     flex: "none",
@@ -441,7 +441,7 @@ export default function TimeExceptionsPage() {
                     </td>
                     <td style={{ ...tdStyle, textAlign: "right" }}>
                       <Link
-                        href={`/admin/employees/${log.employee_id}`}
+                        href={`/people/${log.employee_id}`}
                         className="cc-btn"
                         style={{
                           display: "inline-flex",

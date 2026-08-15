@@ -247,7 +247,7 @@ export default function PeoplePage() {
                         </td>
                         <td style={{ ...tdStyle, textAlign: "right" }}>
                           <Link
-                            href={`/admin/employees/${person.employeeId}`}
+                            href={`/people/${person.employeeId}`}
                             className="cc-btn"
                             style={{
                               display: "inline-flex",

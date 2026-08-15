@@ -333,7 +333,7 @@ export default function TimeLivePage() {
                     </td>
                     <td style={{ ...tdStyle, textAlign: "right" }}>
                       <Link
-                        href={`/admin/employees/${row.employeeId}`}
+                        href={`/people/${row.employeeId}`}
                         className="cc-btn"
                         style={{
                           display: "inline-flex",
