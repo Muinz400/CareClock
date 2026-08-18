@@ -4,17 +4,17 @@ import { useState } from "react";
 import { formatAppTimeRange } from "../lib/time";
 
 export type Schedule = {
-    id: string;
-    employee_id: string;
-    org_id?: string;
-    house_name: string | null;
-    work_date: string;
-    start_time: string | null;
-    end_time: string | null;
-    mileage: number | null;
-    is_outing: boolean | null;
-    daily_log: string | null;
-    };
+id: string;
+employee_id: string;
+org_id?: string;
+house_name: string | null;
+work_date: string;
+start_time: string | null;
+end_time: string | null;
+mileage: number | null;
+is_outing: boolean | null;
+daily_log: string | null;
+};
 
 type Employee = {
 id: string;
@@ -52,11 +52,21 @@ day: "numeric",
 }
 
 function formatDateKey(date: Date) {
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, "0");
-    const day = String(date.getDate()).padStart(2, "0");
-    return `${year}-${month}-${day}`;
-    }
+const year = date.getFullYear();
+const month = String(date.getMonth() + 1).padStart(2, "0");
+const day = String(date.getDate()).padStart(2, "0");
+return `${year}-${month}-${day}`;
+}
+
+function formatDateForPrint(dateString: string) {
+const date = new Date(`${dateString}T00:00:00`);
+return date.toLocaleDateString("en-US", {
+weekday: "short",
+month: "short",
+day: "numeric",
+year: "numeric",
+});
+}
 
 export default function WeeklySchedule({
 schedules,
@@ -65,9 +75,7 @@ onAddShift,
 onEditShift,
 }: WeeklyScheduleProps) {
 const houses = Array.from(
-new Set(
-schedules.map((s) => s.house_name?.trim()).filter(Boolean)
-)
+new Set(schedules.map((s) => s.house_name?.trim()).filter(Boolean))
 ) as string[];
 
 const [weekStart, setWeekStart] = useState(getWeekStartSunday());
@@ -106,14 +114,218 @@ setWeekStart(prev);
 }
 
 function handleExportPdf() {
-window.print();
+const weekDates = DAYS.map((_, index) => {
+const date = new Date(weekStart);
+date.setDate(weekStart.getDate() + index);
+return date;
+});
+
+const visibleHouses = Array.from(
+new Set(
+schedules
+.filter((s) => {
+const shiftDate = new Date(`${s.work_date}T00:00:00`);
+const shiftWeekStart = getWeekStartSunday(shiftDate);
+return shiftWeekStart.getTime() === weekStart.getTime();
+})
+.map((s) => s.house_name?.trim())
+.filter(Boolean)
+)
+) as string[];
+
+const html = `
+<!DOCTYPE html>
+<html>
+<head>
+<title>Weekly Schedule</title>
+<meta charset="utf-8" />
+<style>
+body {
+font-family: Arial, sans-serif;
+margin: 0;
+padding: 24px;
+color: #111827;
+background: white;
+}
+
+h1 {
+margin: 0 0 6px 0;
+font-size: 32px;
+}
+
+.sub {
+margin: 0 0 20px 0;
+color: #6b7280;
+font-size: 14px;
+line-height: 1.4;
+}
+
+.print-btn {
+background: #2563eb;
+color: white;
+border: none;
+padding: 10px 16px;
+border-radius: 10px;
+font-weight: 700;
+cursor: pointer;
+margin-bottom: 20px;
+}
+
+table {
+width: 100%;
+border-collapse: collapse;
+table-layout: fixed;
+}
+
+th, td {
+border: 1px solid #d1d5db;
+vertical-align: top;
+padding: 10px;
+font-size: 12px;
+}
+
+th {
+background: #f8fafc;
+font-weight: 700;
+text-align: center;
+}
+
+.house-col {
+width: 120px;
+font-weight: 700;
+background: #f8fafc;
+}
+
+.shift-card {
+border: 1px solid #e5e7eb;
+border-radius: 8px;
+padding: 6px;
+margin-bottom: 6px;
+background: #f9fafb;
+}
+
+.shift-name {
+font-weight: 700;
+margin-bottom: 4px;
+}
+
+.empty {
+color: #9ca3af;
+}
+
+@media print {
+.print-btn {
+display: none;
+}
+
+@page {
+size: landscape;
+margin: 16px;
+}
+
+body {
+padding: 16px;
+}
+}
+</style>
+</head>
+<body>
+<h1>Steps Towards Independence</h1>
+<p class="sub">
+Weekly Staff Schedule<br />
+${formatShortDate(weekStart)} – ${formatShortDate(weekEnd)}
+</p>
+
+<button class="print-btn" onclick="window.print()">Print / Save as PDF</button>
+
+<table>
+<thead>
+<tr>
+<th class="house-col">House</th>
+${weekDates
+.map(
+(date, index) =>
+`<th>${DAYS[index]}<br /><span style="font-weight:400;">${formatShortDate(
+date
+)}</span></th>`
+)
+.join("")}
+</tr>
+</thead>
+<tbody>
+${visibleHouses
+.map((house) => {
+return `
+<tr>
+<td class="house-col">${house}</td>
+${weekDates
+.map((date, index) => {
+const day = DAYS[index];
+const dateKey = formatDateKey(date);
+
+const cellShifts = schedules.filter((s) => {
+return (
+(s.house_name ?? "").trim() === house &&
+s.work_date === dateKey &&
+getDayLabel(s.work_date) === day
+);
+});
+
+if (cellShifts.length === 0) {
+return `<td><span class="empty">—</span></td>`;
+}
+
+return `
+<td>
+${cellShifts
+.map(
+(shift) => `
+<div class="shift-card">
+<div class="shift-name">${getEmployeeName(
+shift.employee_id
+)}</div>
+<div>${formatDateForPrint(
+shift.work_date
+)}</div>
+<div>${formatAppTimeRange(
+shift.start_time,
+shift.end_time
+)}</div>
+${
+shift.mileage != null
+? `<div>Mileage: ${shift.mileage}</div>`
+: ""
+}
+</div>
+`
+)
+.join("")}
+</td>
+`;
+})
+.join("")}
+</tr>
+`;
+})
+.join("")}
+</tbody>
+</table>
+</body>
+</html>
+`;
+
+const popup = window.open("", "_blank", "width=1400,height=900");
+if (!popup) return;
+
+popup.document.open();
+popup.document.write(html);
+popup.document.close();
+popup.focus();
 }
 
 return (
 <section style={sectionStyle} className="weekly-schedule-print">
-
 <div style={headerRow}>
-
 <button onClick={goPrevWeek} style={navBtn}>
 ◀ Previous
 </button>
@@ -130,9 +342,10 @@ return (
 Next ▶
 </button>
 
-
+<button onClick={handleExportPdf} style={exportBtn}>
+Export PDF
+</button>
 </div>
-
 </div>
 
 {houses.length === 0 ? (
@@ -140,7 +353,6 @@ Next ▶
 ) : (
 <div style={boardWrap}>
 <table style={tableStyle}>
-
 <thead>
 <tr>
 <th style={houseHeaderStyle}>House</th>
@@ -155,10 +367,7 @@ Next ▶
 <tbody>
 {houses.map((house) => (
 <tr key={house}>
-
-<td style={houseCellStyle}>
-{house}
-</td>
+<td style={houseCellStyle}>{house}</td>
 
 {DAYS.map((day, index) => {
 const cellDate = new Date(weekStart);
@@ -178,15 +387,12 @@ onClick={() => onAddShift(house, clickedDate)}
 </button>
 ) : (
 <div style={shiftStackStyle}>
-
 {cellShifts.map((shift) => (
-
 <div
 key={shift.id}
 style={shiftPillStyle}
 onClick={() => onEditShift(shift)}
 >
-
 <div style={shiftNameStyle}>
 {getEmployeeName(shift.employee_id)}
 </div>
@@ -199,32 +405,21 @@ shift.end_time
 </div>
 
 {shift.is_outing ? (
-<div style={outingBadge}>
-Outing
-</div>
+<div style={outingBadge}>Outing</div>
 ) : null}
-
 </div>
-
 ))}
-
 </div>
-
 )}
-
 </td>
 );
-
 })}
-
 </tr>
 ))}
 </tbody>
-
 </table>
 </div>
 )}
-
 </section>
 );
 }

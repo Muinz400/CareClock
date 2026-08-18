@@ -752,18 +752,6 @@ onDelete={() => deleteShift(s.id)}
 </div>
 
 <div style={{ marginTop: 24 }}>
-<div style={{ display: "flex", justifyContent: "space-between", marginBottom: 12 }}>
-<h2 style={{ margin: 0 }}>Weekly Schedule</h2>
-
-<button
-type="button"
-onClick={openWeeklySchedulePdfView}
-style={primaryBtn}
->
-Export PDF
-</button>
-</div>
-
 <div id="weekly-schedule-print">
 <WeeklySchedule
 schedules={schedules}
@@ -773,6 +761,7 @@ onEditShift={handleEditShift}
 />
 </div>
 </div>
+
 </main>
 );
 }
