@@ -17,7 +17,7 @@ const NAV_ITEMS: NavItem[] = [
   { label: "Schedule", href: "/schedule", available: false },
   { label: "Time", href: "/time", available: true },
   { label: "People", href: "/people", available: true },
-  { label: "Payroll", href: "/payroll", available: false },
+  { label: "Payroll", href: "/payroll", available: true },
   { label: "Places", href: "/places", available: false },
   { label: "Clients", href: "/clients", available: false },
   { label: "Settings", href: "/settings", available: false },
