@@ -1,12 +1,12 @@
 "use client";
 
 import { Suspense, useEffect, useMemo, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useAdminProfile } from "../../../hooks/useAdminSession";
 import { supabase } from "../../../supabaseClient";
 import { formatAppDate, formatAppTimeRange } from "../../../lib/time";
 import { tokens } from "../../../styles/tokens";
-import { SectionHeader, Panel, EmptyState, LoadingSpinner } from "../../../components/ui";
+import { SectionHeader, EmptyState, LoadingSpinner } from "../../../components/ui";
 import WeeklySchedule, {
   type Schedule,
   DAYS,
@@ -32,6 +32,12 @@ import WeeklySchedule, {
   verbatim (not rewritten) to sit next to the weekStart state the
   page-level toolbar now owns.
 
+  Create/Edit no longer live inline here (Scheduling A follow-up) — they
+  moved to dedicated /scheduling/new and /scheduling/[id]/edit routes,
+  sharing components/scheduling/ShiftForm. This page now only navigates.
+  The old ?edit=<id> deep link (still used by /admin/shifts) is preserved
+  by redirecting to the new edit route instead of opening an inline form.
+
   Deliberately not touched here, per explicit instruction: inactive-
   employee filtering, mutation org-scoping hardening, overlap validation,
   timezone handling. All carried forward exactly as they exist today.
@@ -48,24 +54,14 @@ function getEmployeeNameFrom(employees: Employee[], employeeId: string) {
 
 function SchedulingPageContent() {
   const { org_id: orgId } = useAdminProfile();
+  const router = useRouter();
   const searchParams = useSearchParams();
   const editId = searchParams.get("edit");
 
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [schedules, setSchedules] = useState<Schedule[]>([]);
 
-  const [employeeId, setEmployeeId] = useState("");
-  const [houseName, setHouseName] = useState("");
-  const [workDate, setWorkDate] = useState("");
-  const [startTime, setStartTime] = useState("");
-  const [endTime, setEndTime] = useState("");
-  const [mileage, setMileage] = useState("");
-  const [isOuting, setIsOuting] = useState(false);
-  const [dailyLog, setDailyLog] = useState("");
-
-  const [editingId, setEditingId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const [selectedShiftEmployeeId, setSelectedShiftEmployeeId] = useState("all");
@@ -87,12 +83,7 @@ function SchedulingPageContent() {
       return;
     }
 
-    const rows = (data ?? []) as Employee[];
-    setEmployees(rows);
-
-    if (!employeeId && rows.length > 0) {
-      setEmployeeId(rows[0].id);
-    }
+    setEmployees((data ?? []) as Employee[]);
   }
 
   async function loadSchedules() {
@@ -130,99 +121,11 @@ function SchedulingPageContent() {
   }, [orgId]);
 
   function handleEditShift(shift: Schedule) {
-    setEditingId(shift.id);
-    setEmployeeId(shift.employee_id);
-    setHouseName(shift.house_name ?? "");
-    setWorkDate(shift.work_date?.slice(0, 10) ?? "");
-    setStartTime(shift.start_time ?? "");
-    setEndTime(shift.end_time ?? "");
-    setMileage(shift.mileage != null ? String(shift.mileage) : "");
-    setIsOuting(Boolean(shift.is_outing));
-    setDailyLog(shift.daily_log ?? "");
-
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  }
-
-  function resetForm() {
-    setEditingId(null);
-    setHouseName("");
-    setWorkDate("");
-    setStartTime("");
-    setEndTime("");
-    setMileage("");
-    setIsOuting(false);
-    setDailyLog("");
-  }
-
-  function handleNewShiftClick() {
-    resetForm();
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    router.push(`/scheduling/${shift.id}/edit`);
   }
 
   function handleAddShiftFromCalendar(house: string, clickedDate: string) {
-    setHouseName(house);
-    setWorkDate(clickedDate);
-
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  }
-
-  async function saveSchedule(e: React.FormEvent) {
-    e.preventDefault();
-    setError(null);
-
-    if (!employeeId) {
-      setError("Please select an employee.");
-      return;
-    }
-
-    if (!workDate) {
-      setError("Please select a work date.");
-      return;
-    }
-
-    setSaving(true);
-
-    const parsedMileage = mileage.trim() === "" ? null : Number(mileage);
-
-    if (parsedMileage !== null && Number.isNaN(parsedMileage)) {
-      setError("Mileage must be a valid number.");
-      setSaving(false);
-      return;
-    }
-
-    const payload = {
-      org_id: orgId,
-      employee_id: employeeId,
-      house_name: houseName.trim() || null,
-      work_date: workDate,
-      start_time: startTime || null,
-      end_time: endTime || null,
-      mileage: parsedMileage,
-      is_outing: isOuting,
-      daily_log: dailyLog.trim() || null,
-    };
-
-    if (editingId) {
-      const { error } = await supabase.from("schedules").update(payload).eq("id", editingId);
-
-      if (error) {
-        setError(error.message);
-        setSaving(false);
-        return;
-      }
-    } else {
-      const { error } = await supabase.from("schedules").insert([payload]);
-
-      if (error) {
-        setError(error.message);
-        setSaving(false);
-        return;
-      }
-    }
-
-    resetForm();
-    await loadSchedules();
-    setSaving(false);
+    router.push(`/scheduling/new?house=${encodeURIComponent(house)}&date=${encodeURIComponent(clickedDate)}`);
   }
 
   async function deleteShift(id: string) {
@@ -241,14 +144,14 @@ function SchedulingPageContent() {
     await loadSchedules();
   }
 
+  // Legacy deep-link compatibility: /admin/shifts still links here with
+  // ?edit=<id>. Redirect to the dedicated edit route instead of opening an
+  // inline form, so the old URL keeps working without inline-edit state.
   useEffect(() => {
-    if (!editId || schedules.length === 0) return;
-
-    const shiftToEdit = schedules.find((s) => s.id === editId);
-    if (shiftToEdit) {
-      handleEditShift(shiftToEdit);
+    if (editId) {
+      router.replace(`/scheduling/${editId}/edit`);
     }
-  }, [editId, schedules]);
+  }, [editId, router]);
 
   function goPrevWeek() {
     const prev = new Date(weekStart);
@@ -474,10 +377,10 @@ ${shift.mileage != null ? `<div>Mileage: ${shift.mileage}</div>` : ""}
     return schedules.filter((s) => s.employee_id === selectedShiftEmployeeId);
   }, [schedules, selectedShiftEmployeeId]);
 
-  if (loading) {
+  if (editId || loading) {
     return (
       <div style={{ display: "flex", justifyContent: "center", padding: tokens.spacing[9] }}>
-        <LoadingSpinner size="lg" label="Loading Schedule..." />
+        <LoadingSpinner size="lg" label={editId ? "Redirecting..." : "Loading Schedule..."} />
       </div>
     );
   }
@@ -548,7 +451,7 @@ ${shift.mileage != null ? `<div>Mileage: ${shift.mileage}</div>` : ""}
           </button>
           <button
             type="button"
-            onClick={handleNewShiftClick}
+            onClick={() => router.push("/scheduling/new")}
             className="cc-btn"
             style={{ ...toolbarBtn, background: tokens.signal.base, color: "#1a1305", border: "none", fontWeight: tokens.typography.weight.bold }}
           >
@@ -566,94 +469,6 @@ ${shift.mileage != null ? `<div>Mileage: ${shift.mileage}</div>` : ""}
           onAddShift={handleAddShiftFromCalendar}
           onEditShift={handleEditShift}
         />
-      </section>
-
-      <section style={{ marginBottom: tokens.spacing[7] }}>
-        <SectionHeader>{editingId ? "Edit Shift" : "New Shift"}</SectionHeader>
-        <Panel padding="md" style={{ maxWidth: 640 }}>
-          <form onSubmit={saveSchedule} style={{ display: "grid", gap: tokens.spacing[4] }}>
-            <FormField label="Employee">
-              <select value={employeeId} onChange={(e) => setEmployeeId(e.target.value)} style={inputStyle}>
-                <option value="">Select employee</option>
-                {employees.map((emp) => (
-                  <option key={emp.id} value={emp.id}>
-                    {emp.name}
-                  </option>
-                ))}
-              </select>
-            </FormField>
-
-            <FormField label="House">
-              <input
-                type="text"
-                placeholder="Ex: Maple House"
-                value={houseName}
-                onChange={(e) => setHouseName(e.target.value)}
-                style={inputStyle}
-              />
-            </FormField>
-
-            <FormField label="Work Date">
-              <input type="date" value={workDate} onChange={(e) => setWorkDate(e.target.value)} style={inputStyle} />
-            </FormField>
-
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: tokens.spacing[3] }}>
-              <FormField label="Start Time">
-                <input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} style={inputStyle} />
-              </FormField>
-              <FormField label="End Time">
-                <input type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} style={inputStyle} />
-              </FormField>
-            </div>
-
-            <FormField label="Mileage">
-              <input
-                type="number"
-                placeholder="Leave blank if none"
-                value={mileage}
-                onChange={(e) => setMileage(e.target.value)}
-                style={inputStyle}
-              />
-            </FormField>
-
-            <label style={{ display: "flex", alignItems: "center", gap: tokens.spacing[2], fontSize: tokens.typography.size.sm }}>
-              <input type="checkbox" checked={isOuting} onChange={(e) => setIsOuting(e.target.checked)} />
-              <span>Mark as outing</span>
-            </label>
-
-            <FormField label="Daily Log">
-              <textarea
-                placeholder="Add context for the shift, tasks, notes, or reminders"
-                value={dailyLog}
-                onChange={(e) => setDailyLog(e.target.value)}
-                rows={5}
-                style={{ ...inputStyle, resize: "vertical" }}
-              />
-            </FormField>
-
-            <div style={{ display: "flex", gap: tokens.spacing[3], flexWrap: "wrap" }}>
-              <button
-                type="submit"
-                disabled={saving}
-                className="cc-btn"
-                style={{ ...actionButtonStyle, background: tokens.signal.base, color: "#1a1305", border: "none" }}
-              >
-                {saving ? "Saving..." : editingId ? "Save Changes" : "Create Shift"}
-              </button>
-              {editingId && (
-                <button
-                  type="button"
-                  onClick={resetForm}
-                  disabled={saving}
-                  className="cc-btn"
-                  style={{ ...actionButtonStyle, background: "transparent", color: tokens.paper.inkMuted, border: `1px solid ${tokens.paper.border}` }}
-                >
-                  Cancel
-                </button>
-              )}
-            </div>
-          </form>
-        </Panel>
       </section>
 
       <section>
@@ -775,16 +590,6 @@ const toolbarBtn: React.CSSProperties = {
   border: `1px solid ${tokens.paper.border}`,
   background: tokens.paper.surface,
   color: tokens.paper.ink,
-  fontSize: tokens.typography.size.sm,
-  fontWeight: tokens.typography.weight.semibold,
-};
-
-const actionButtonStyle: React.CSSProperties = {
-  padding: `${tokens.spacing[3]} ${tokens.spacing[4]}`,
-  minHeight: 44,
-  display: "inline-flex",
-  alignItems: "center",
-  borderRadius: tokens.radius.structural,
   fontSize: tokens.typography.size.sm,
   fontWeight: tokens.typography.weight.semibold,
 };
